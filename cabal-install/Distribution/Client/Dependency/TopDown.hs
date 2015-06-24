@@ -28,7 +28,8 @@ import Distribution.Client.Types
          ( SourcePackage(..), ConfiguredPackage(..), InstalledPackage(..)
          , enableStanzas, ConfiguredId(..), fakeInstalledPackageId )
 import Distribution.Client.Dependency.Types
-         ( DependencyResolver, PackageConstraint(..)
+         ( DependencyResolver
+         , PackageConstraint(..), PackagesSubsetConstraint(..)
          , PackagePreferences(..), InstalledPreference(..)
          , Progress(..), foldProgress )
 
@@ -250,10 +251,11 @@ search configure pref constraints =
 --
 topDownResolver :: DependencyResolver
 topDownResolver platform cinfo installedPkgIndex sourcePkgIndex
-                preferences constraints targets =
+                preferences constraints subsetConstraint targets =
     mapMessages (topDownResolver' platform cinfo
                                   (convert installedPkgIndex) sourcePkgIndex
-                                  preferences constraints targets)
+                                  preferences constraints subsetConstraint
+                                  targets)
   where
     mapMessages :: Progress Log Failure a -> Progress String String a
     mapMessages = foldProgress (Step . showLog) (Fail . showFailure) Done
@@ -265,13 +267,15 @@ topDownResolver' :: Platform -> CompilerInfo
                  -> PackageIndex SourcePackage
                  -> (PackageName -> PackagePreferences)
                  -> [PackageConstraint]
+                 -> PackagesSubsetConstraint
                  -> [PackageName]
                  -> Progress Log Failure [PlanPackage]
 topDownResolver' platform cinfo installedPkgIndex sourcePkgIndex
-                 preferences constraints targets =
+                 preferences constraints subsetConstraint targets =
       fmap (uncurry finalise)
     . (\cs -> search configure preferences cs initialPkgNames)
   =<< pruneBottomUp platform cinfo
+  =<< addPackagesSubsetConstraint subsetConstraint
   =<< addTopLevelConstraints constraints
   =<< addTopLevelTargets targets emptyConstraintSet
 
@@ -349,6 +353,10 @@ addTopLevelConstraints (PackageConstraintSource pkg:deps) cs =
 
 addTopLevelConstraints (PackageConstraintStanzas _ _ : deps) cs =
     addTopLevelConstraints deps cs
+
+addPackagesSubsetConstraint :: PackagesSubsetConstraint -> Constraints
+                            -> Progress Log Failure Constraints
+addPackagesSubsetConstraint _ cs = return cs --TODO
 
 -- | Add exclusion on available packages that cannot be configured.
 --

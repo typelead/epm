@@ -17,7 +17,8 @@ import Data.Map (Map)
 import Data.Traversable (sequence)
 
 import Distribution.Client.Dependency.Types
-  ( PackageConstraint(..), PackagePreferences(..), InstalledPreference(..) )
+  ( PackageConstraint(..), PackagePreferences(..), InstalledPreference(..)
+  , PackagesSubsetConstraint(..) )
 import Distribution.Client.Types
   ( OptionalStanza(..) )
 
@@ -107,6 +108,13 @@ processPackageConstraintP c i       (PackageConstraintSource    _)  r
   | otherwise     = Fail c GlobalConstraintSource
 processPackageConstraintP _ _       _                               r = r
 
+processSubsetConstraintP :: ConflictSet QPN -> I -> PackagesSubsetConstraint -> PN -> Tree a -> Tree a
+processSubsetConstraintP _  _      NoPackagesSubsetSelected           _  r = r
+processSubsetConstraintP c (I v _) (PackagesSubsetSelected ss ssname) pn r =
+  case M.lookup pn ss of
+    Just vr | checkVR vr v  -> r
+    mvr                     -> Fail c (PackagesSubsetNotMember ssname mvr)
+
 -- | Helper function that tries to enforce a single package constraint on a
 -- given flag setting for an F-node. Translates the constraint into a
 -- tree-transformer that either leaves the subtree untouched, or replaces it
@@ -132,13 +140,17 @@ processPackageConstraintS _ _ _  _                             r = r
 -- | Traversal that tries to establish various kinds of user constraints. Works
 -- by selectively disabling choices that have been ruled out by global user
 -- constraints.
-enforcePackageConstraints :: M.Map PN [PackageConstraint] -> Tree QGoalReasonChain -> Tree QGoalReasonChain
-enforcePackageConstraints pcs = trav go
+enforcePackageConstraints :: M.Map PN [PackageConstraint]
+                          -> PackagesSubsetConstraint
+                          -> Tree QGoalReasonChain -> Tree QGoalReasonChain
+enforcePackageConstraints pcs psc = trav go
   where
     go (PChoiceF qpn@(Q _ pn)               gr      ts) =
       let c = toConflictSet (Goal (P qpn) gr)
           -- compose the transformation functions for each of the relevant constraint
-          g = \ (POption i _) -> foldl (\ h pc -> h . processPackageConstraintP   c i pc) id
+          g = \ (POption i _) ->
+                     processSubsetConstraintP c i psc pn
+                   . foldl (\ h pc -> h . processPackageConstraintP   c i pc) id
                            (M.findWithDefault [] pn pcs)
       in PChoiceF qpn gr      (P.mapWithKey g ts)
     go (FChoiceF qfn@(FN (PI (Q _ pn) _) f) gr tr m ts) =

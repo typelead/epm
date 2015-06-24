@@ -40,12 +40,13 @@ module Distribution.Version (
   isAnyVersion,
   isNoVersion,
   isSpecificVersion,
-  simplifyVersionRange,
   foldVersionRange,
   foldVersionRange',
 
   -- ** Modification
+  simplifyVersionRange,
   removeUpperBound,
+  invertVersionRange,
 
   -- * Version intervals view
   asVersionIntervals,
@@ -222,26 +223,12 @@ withinVersion = WildcardVersion
 -- In practice this is not very useful because we normally use inclusive lower
 -- bounds and exclusive upper bounds.
 --
--- > withinRange v' (laterVersion v) = v' > v
---
 betweenVersionsInclusive :: Version -> Version -> VersionRange
 betweenVersionsInclusive v1 v2 =
   IntersectVersionRanges (orLaterVersion v1) (orEarlierVersion v2)
 
 {-# DEPRECATED betweenVersionsInclusive
     "In practice this is not very useful because we normally use inclusive lower bounds and exclusive upper bounds" #-}
-
--- | Given a version range, remove the highest upper bound. Example: @(>= 1 && <
--- 3) || (>= 4 && < 5)@ is converted to @(>= 1 && < 3) || (>= 4)@.
-removeUpperBound :: VersionRange -> VersionRange
-removeUpperBound = fromVersionIntervals . relaxLastInterval . toVersionIntervals
-  where
-    relaxLastInterval (VersionIntervals intervals) =
-      VersionIntervals (relaxLastInterval' intervals)
-
-    relaxLastInterval' []      = []
-    relaxLastInterval' [(l,_)] = [(l, NoUpperBound)]
-    relaxLastInterval' (i:is)  = i : relaxLastInterval' is
 
 -- | Fold over the basic syntactic structure of a 'VersionRange'.
 --
@@ -415,6 +402,41 @@ simplifyVersionRange vr
     | otherwise                  = fromVersionIntervals vi
   where
     vi = toVersionIntervals vr
+
+-- | Given a 'VersionRange', remove the highest upper bound. This means it
+-- becomes unbounded above.
+--
+-- Example: @(>= 1 && < 3) || (>= 4 && < 5)@ is converted to
+--          @(>= 1 && < 3) || (>= 4)@.
+--
+removeUpperBound :: VersionRange -> VersionRange
+removeUpperBound =
+    fromVersionIntervals
+  . VersionIntervals . relaxLastInterval . versionIntervals
+  . toVersionIntervals
+  where
+    relaxLastInterval :: [VersionInterval] -> [VersionInterval]
+    relaxLastInterval []      = []
+    relaxLastInterval [(l,_)] = [(l, NoUpperBound)]
+    relaxLastInterval (i:is)  = i : relaxLastInterval is
+
+-- | Given a 'VersionRange', make a new one with the inverted meaning.
+--
+-- > withinRange v (invertVersionRange vr) = not (withinRange v vr)
+--
+invertVersionRange :: VersionRange -> VersionRange
+invertVersionRange =
+    foldVersionRange'
+      noVersion
+      notThisVersion
+      orEarlierVersion
+      orLaterVersion
+      earlierVersion
+      laterVersion
+      (\l u -> earlierVersion l `unionVersionRanges` orLaterVersion u)
+      intersectVersionRanges
+      unionVersionRanges
+      VersionRangeParens
 
 ----------------------------
 -- Wildcard range utilities

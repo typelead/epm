@@ -30,9 +30,10 @@ solve :: SolverConfig ->   -- solver parameters
          Index ->          -- all available packages as an index
          (PN -> PackagePreferences) -> -- preferences
          Map PN [PackageConstraint] -> -- global constraints
+         PackagesSubsetConstraint   -> -- more constraints
          [PN] ->                       -- global goals
          Log Message (Assignment, RevDepMap)
-solve sc idx userPrefs userConstraints userGoals =
+solve sc idx userPrefs userConstraints userSubset userGoals =
   explorePhase     $
   heuristicsPhase  $
   preferencesPhase $
@@ -51,7 +52,7 @@ solve sc idx userPrefs userConstraints userGoals =
                        P.preferLinked
     preferencesPhase = P.preferPackagePreferences userPrefs
     validationPhase  = P.enforceManualFlags . -- can only be done after user constraints
-                       P.enforcePackageConstraints userConstraints .
+                       P.enforcePackageConstraints userConstraints userSubset .
                        P.enforceSingleInstanceRestriction .
                        validateLinking idx .
                        validateTree idx

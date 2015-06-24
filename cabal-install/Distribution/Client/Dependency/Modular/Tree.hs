@@ -11,6 +11,7 @@ import Distribution.Client.Dependency.Modular.Flag
 import Distribution.Client.Dependency.Modular.Package
 import Distribution.Client.Dependency.Modular.PSQ as P
 import Distribution.Client.Dependency.Modular.Version
+import Distribution.Client.Dependency.Types (SubsetName)
 
 -- | Type of the search tree. Inlining the choice nodes for now.
 data Tree a =
@@ -59,6 +60,7 @@ data FailReason = InconsistentInitialConstraints
                 | GlobalConstraintInstalled
                 | GlobalConstraintSource
                 | GlobalConstraintFlag
+                | PackagesSubsetNotMember SubsetName (Maybe VR)
                 | ManualFlag
                 | BuildFailureNotInIndex PN
                 | MalformedFlagChoice QFN

@@ -21,6 +21,8 @@ module Distribution.Client.Dependency.Types (
 
     AllowNewer(..), isAllowNewer,
     PackageConstraint(..),
+    PackagesSubsetConstraint(..),
+    SubsetName,
     debugPackageConstraint,
     PackagePreferences(..),
     InstalledPreference(..),
@@ -43,6 +45,7 @@ import Data.Char
 import Data.Monoid
          ( Monoid(..) )
 #endif
+import Data.Map (Map)
 
 import Distribution.Client.Types
          ( OptionalStanza(..), SourcePackage(..) )
@@ -119,6 +122,7 @@ type DependencyResolver = Platform
                        ->          PackageIndex.PackageIndex SourcePackage
                        -> (PackageName -> PackagePreferences)
                        -> [PackageConstraint]
+                       -> PackagesSubsetConstraint
                        -> [PackageName]
                        -> Progress String String [InstallPlan.PlanPackage]
 
@@ -134,6 +138,23 @@ data PackageConstraint
    | PackageConstraintFlags     PackageName FlagAssignment
    | PackageConstraintStanzas   PackageName [OptionalStanza]
   deriving (Show,Eq)
+
+-- | A set of constraints to select only from within a subset of packages.
+-- Packages in the subset are in the map, (which gives the set of versions
+-- for that package) while packages not in the map are excluded entirely.
+--
+-- The subset has a name, to be used for solver error message reporting.
+--
+-- This is equivalent to a list of 'PackageConstraint' but with a rather more
+-- compact representation. (A list would need to cover every single package
+-- simply to be able to exclude those not in the subset)
+--
+data PackagesSubsetConstraint
+   = NoPackagesSubsetSelected
+   | PackagesSubsetSelected !(Map PackageName VersionRange)
+                            !SubsetName
+
+type SubsetName = String
 
 -- | Provide a textual representation of a package constraint
 -- for debugging purposes.

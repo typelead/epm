@@ -72,7 +72,8 @@ import Distribution.Client.Types
          ( SourcePackageDb(SourcePackageDb)
          , SourcePackage(..) )
 import Distribution.Client.Dependency.Types
-         ( PreSolver(..), Solver(..), DependencyResolver, PackageConstraint(..)
+         ( PreSolver(..), Solver(..), DependencyResolver
+         , PackageConstraint(..), PackagesSubsetConstraint(..)
          , debugPackageConstraint
          , AllowNewer(..), PackagePreferences(..), InstalledPreference(..)
          , PackagesPreferenceDefault(..)
@@ -120,6 +121,7 @@ import Data.Set (Set)
 data DepResolverParams = DepResolverParams {
        depResolverTargets           :: [PackageName],
        depResolverConstraints       :: [PackageConstraint],
+       depResolverSubsetConstraint  :: PackagesSubsetConstraint,
        depResolverPreferences       :: [PackagePreference],
        depResolverPreferenceDefault :: PackagesPreferenceDefault,
        depResolverInstalledPkgIndex :: InstalledPackageIndex,
@@ -171,6 +173,7 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
     DepResolverParams {
        depResolverTargets           = [],
        depResolverConstraints       = [],
+       depResolverSubsetConstraint  = NoPackagesSubsetSelected,
        depResolverPreferences       = [],
        depResolverPreferenceDefault = PreferLatestForSelected,
        depResolverInstalledPkgIndex = installedPkgIndex,
@@ -522,11 +525,12 @@ resolveDependencies platform comp  solver params =
   $ runSolver solver (SolverConfig reorderGoals indGoals noReinstalls
                       shadowing strFlags maxBkjumps)
                      platform comp installedPkgIndex sourcePkgIndex
-                     preferences constraints targets
+                     preferences constraints subsetConstraint targets
   where
 
     finalparams @ (DepResolverParams
-      targets constraints
+      targets
+      constraints subsetConstraint
       prefs defpref
       installedPkgIndex
       sourcePkgIndex
@@ -618,7 +622,8 @@ interpretPackagesPreference selected defaultPref prefs =
 --
 resolveWithoutDependencies :: DepResolverParams
                            -> Either [ResolveNoDepsError] [SourcePackage]
-resolveWithoutDependencies (DepResolverParams targets constraints
+resolveWithoutDependencies (DepResolverParams targets
+                              constraints subsetConstraint
                               prefs defpref installedPkgIndex sourcePkgIndex
                               _reorderGoals _indGoals _avoidReinstalls
                               _shadowing _strFlags _maxBjumps) =
@@ -631,7 +636,7 @@ resolveWithoutDependencies (DepResolverParams targets constraints
 
       where
         -- Constraints
-        requiredVersions = packageConstraints pkgname
+        requiredVersions = packageConstraints pkgname --TODO: use subsetConstraint
         pkgDependency    = Dependency pkgname requiredVersions
         choices          = PackageIndex.lookupDependency sourcePkgIndex
                                                          pkgDependency

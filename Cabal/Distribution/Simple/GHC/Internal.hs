@@ -188,8 +188,11 @@ configureToolchain _implInfo ghcProg ghcInfo =
              withTempFile tempDir ".o" $ \testofile testohnd -> do
                hPutStrLn testchnd "int foo() { return 0; }"
                hClose testchnd; hClose testohnd
-               rawSystemProgram verbosity ghcProg ["-c", testcfile,
-                                                   "-o", testofile]
+               rawSystemProgram verbosity ghcProg
+                                [ "-hide-all-packages"
+                                , "-c", testcfile
+                                , "-o", testofile
+                                ]
                withTempFile tempDir ".o" $ \testofile' testohnd' ->
                  do
                    hClose testohnd'
@@ -266,6 +269,7 @@ componentCcGhcOptions verbosity _implInfo lbi bi clbi odir filename =
                                           ,autogenPackageModulesDir lbi
                                           ,odir]
                                           ++ PD.includeDirs bi,
+      ghcOptHideAllPackages= toFlag True,
       ghcOptPackageDBs     = withPackageDB lbi,
       ghcOptPackages       = toNubListR $ mkGhcOptPackages clbi,
       ghcOptCcOptions      = toNubListR $
@@ -289,12 +293,12 @@ componentGhcOptions verbosity lbi bi clbi odir =
       -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
       ghcOptVerbosity       = toFlag (min verbosity normal),
-      ghcOptHideAllPackages = toFlag True,
       ghcOptCabal           = toFlag True,
       ghcOptThisUnitId      = case clbi of
         LibComponentLocalBuildInfo { componentCompatPackageKey = pk }
           -> toFlag pk
         _ -> mempty,
+      ghcOptHideAllPackages = toFlag True,
       ghcOptPackageDBs      = withPackageDB lbi,
       ghcOptPackages        = toNubListR $ mkGhcOptPackages clbi,
       ghcOptSplitObjs       = toFlag (splitObjs lbi),

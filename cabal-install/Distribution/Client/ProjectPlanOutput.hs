@@ -6,6 +6,7 @@
 -----------------------------------------------------------------------------
 module Distribution.Client.ProjectPlanOutput (
     writePlanExternalRepresentation,
+    writePlanGhcEnvironment,
   ) where
 
 import           Distribution.Client.ProjectPlanning.Types
@@ -19,6 +20,13 @@ import qualified Distribution.Solver.Types.ComponentDeps as ComponentDeps
 
 import           Distribution.Package
 import qualified Distribution.PackageDescription as PD
+import           Distribution.Compiler (CompilerFlavor(GHC))
+import           Distribution.Simple.Compiler
+                   ( PackageDB(..), compilerVersion, compilerFlavor )
+import           Distribution.Simple.GHC
+                   ( getImplInfo, GhcImplInfo(supportsPkgEnvFiles)
+                   , GhcEnvironmentFileEntry(..), simpleGhcEnvironmentFile
+                   , writeGhcEnvironmentFile )
 import           Distribution.Text
 import           Distribution.Simple.Utils
 import qualified Paths_cabal_install as Our (version)
@@ -105,4 +113,46 @@ encodePlanAsJson elaboratedInstallPlan _elaboratedSharedConfig =
 
     jdisplay :: Text a => a -> J.Value
     jdisplay = J.String . display
+
+
+writePlanGhcEnvironment :: FilePath
+                        -> ElaboratedInstallPlan
+                        -> ElaboratedSharedConfig
+                        -> IO ()
+writePlanGhcEnvironment projectRootDir
+                        elaboratedInstallPlan
+                        ElaboratedSharedConfig {
+                          pkgConfigCompiler = compiler,
+                          pkgConfigPlatform = platform
+                        }
+  | compilerFlavor compiler == GHC
+  , supportsPkgEnvFiles (getImplInfo compiler)
+  --TODO: check ghcjs compat
+  = writeGhcEnvironmentFile
+      projectRootDir
+      platform (compilerVersion compiler)
+      (renderGhcEnviromentFile elaboratedInstallPlan)
+
+writePlanGhcEnvironment _ _ _ = return ()
+
+renderGhcEnviromentFile :: ElaboratedInstallPlan
+                        -> [GhcEnvironmentFileEntry]
+renderGhcEnviromentFile elaboratedInstallPlan =
+    --TODO: extend the syntax so we can include comments like this
+    -- map GhcEnvFileComment _headerComment ++
+    simpleGhcEnvironmentFile packageDBs unitIds
+  where
+    _headerComment =
+      [ "This is a GHC environment file written by cabal. This means you can"
+      , "run ghc or ghci and get the environment of the project as a whole."
+      , "But you still need to use cabal repl $target to get the environment"
+      , "of specific components (libs, exes, tests etc) because each one can"
+      , "have its own source dirs, cpp flags etc."
+      , "" ]
+    packageDBs = [GlobalPackageDB] --TODO: get the right ones
+    unitIds    =
+      [ installedUnitId pkg
+      | pkg <- InstallPlan.toList elaboratedInstallPlan ]
+      --TODO: need PreExisting and Installed state pkgs but not Configured
+      -- these are the ones that are up to date.
 

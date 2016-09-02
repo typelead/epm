@@ -66,7 +66,7 @@ ghcVersionImplInfo (Version v _) = GhcImplInfo
   , flagProfAuto         = v >= [7,4]
   , flagPackageConf      = v <  [7,5]
   , flagDebugInfo        = v >= [7,10]
-  , supportsPkgEnvFiles  = v >= [8,0]
+  , supportsPkgEnvFiles  = v >= [8,0,2] -- broken in 8.0.1, fixed in 8.0.2
   }
 
 ghcjsVersionImplInfo :: Version  -- ^ The GHCJS version
@@ -80,7 +80,7 @@ ghcjsVersionImplInfo (Version _ghcjsv _) (Version ghcv _) = GhcImplInfo
   , flagProfAuto         = True
   , flagPackageConf      = False
   , flagDebugInfo        = False
-  , supportsPkgEnvFiles  = ghcv >= [8,0] --TODO: check this works in ghcjs
+  , supportsPkgEnvFiles  = ghcv >= [8,0,2] --TODO: check this works in ghcjs
   }
 
 lhcVersionImplInfo :: Version -> GhcImplInfo

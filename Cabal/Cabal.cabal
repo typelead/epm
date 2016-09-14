@@ -189,6 +189,7 @@ library
     Distribution.Simple.Configure
     Distribution.Simple.GHC
     Distribution.Simple.GHCJS
+    Distribution.Simple.GHCVM
     Distribution.Simple.Haddock
     Distribution.Simple.HaskellSuite
     Distribution.Simple.Hpc

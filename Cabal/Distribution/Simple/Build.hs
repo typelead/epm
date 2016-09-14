@@ -25,6 +25,7 @@ module Distribution.Simple.Build (
 
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
+import qualified Distribution.Simple.GHCVM as GHCVM
 import qualified Distribution.Simple.JHC   as JHC
 import qualified Distribution.Simple.LHC   as LHC
 import qualified Distribution.Simple.UHC   as UHC
@@ -447,6 +448,7 @@ createInternalPackageDB verbosity lbi distPref = do
     case compilerFlavor (compiler lbi) of
       GHC   -> createWith $ GHC.hcPkgInfo   (withPrograms lbi)
       GHCJS -> createWith $ GHCJS.hcPkgInfo (withPrograms lbi)
+      GHCVM -> createWith $ GHCVM.hcPkgInfo (withPrograms lbi)
       LHC   -> createWith $ LHC.hcPkgInfo   (withPrograms lbi)
       _     -> return packageDB
     where
@@ -488,6 +490,7 @@ buildLib verbosity numJobs pkg_descr lbi lib clbi =
   case compilerFlavor (compiler lbi) of
     GHC   -> GHC.buildLib   verbosity numJobs pkg_descr lbi lib clbi
     GHCJS -> GHCJS.buildLib verbosity numJobs pkg_descr lbi lib clbi
+    GHCVM -> GHCVM.buildLib verbosity numJobs pkg_descr lbi lib clbi
     JHC   -> JHC.buildLib   verbosity         pkg_descr lbi lib clbi
     LHC   -> LHC.buildLib   verbosity         pkg_descr lbi lib clbi
     UHC   -> UHC.buildLib   verbosity         pkg_descr lbi lib clbi
@@ -501,6 +504,7 @@ buildExe verbosity numJobs pkg_descr lbi exe clbi =
   case compilerFlavor (compiler lbi) of
     GHC   -> GHC.buildExe   verbosity numJobs pkg_descr lbi exe clbi
     GHCJS -> GHCJS.buildExe verbosity numJobs pkg_descr lbi exe clbi
+    GHCVM -> GHCVM.buildExe verbosity numJobs pkg_descr lbi exe clbi
     JHC   -> JHC.buildExe   verbosity         pkg_descr lbi exe clbi
     LHC   -> LHC.buildExe   verbosity         pkg_descr lbi exe clbi
     UHC   -> UHC.buildExe   verbosity         pkg_descr lbi exe clbi

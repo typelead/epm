@@ -114,6 +114,7 @@ import Distribution.Verbosity
 
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
+import qualified Distribution.Simple.GHCVM as GHCVM
 import qualified Distribution.Simple.JHC   as JHC
 import qualified Distribution.Simple.LHC   as LHC
 import qualified Distribution.Simple.UHC   as UHC
@@ -604,6 +605,8 @@ configure (pkg_descr0, pbi) cfg
                   not (GHC.isDynamic comp)
                 CompilerId GHCJS _ ->
                   not (GHCJS.isDynamic comp)
+                CompilerId GHCVM _ ->
+                  not (GHCVM.isDynamic comp)
                 _ -> False
 
         let sharedLibsByDefault
@@ -618,6 +621,8 @@ configure (pkg_descr0, pbi) cfg
                   GHC.isDynamic comp
                 CompilerId GHCJS _ ->
                   GHCJS.isDynamic comp
+                CompilerId GHCVM _ ->
+                  GHCVM.isDynamic comp
                 _ -> False
             withSharedLib_ =
                 -- build shared libraries if required by GHC or by the
@@ -837,6 +842,7 @@ getInstalledPackages verbosity comp packageDBs progconf = do
   case compilerFlavor comp of
     GHC   -> GHC.getInstalledPackages verbosity packageDBs progconf
     GHCJS -> GHCJS.getInstalledPackages verbosity packageDBs progconf
+    GHCVM -> GHCVM.getInstalledPackages verbosity packageDBs progconf
     JHC   -> JHC.getInstalledPackages verbosity packageDBs progconf
     LHC   -> LHC.getInstalledPackages verbosity packageDBs progconf
     UHC   -> UHC.getInstalledPackages verbosity comp packageDBs progconf
@@ -854,6 +860,7 @@ getPackageDBContents verbosity comp packageDB progconf = do
   case compilerFlavor comp of
     GHC -> GHC.getPackageDBContents verbosity packageDB progconf
     GHCJS -> GHCJS.getPackageDBContents verbosity packageDB progconf
+    GHCVM -> GHCVM.getPackageDBContents verbosity packageDB progconf
     -- For other compilers, try to fall back on 'getInstalledPackages'.
     _   -> getInstalledPackages verbosity comp [packageDB] progconf
 
@@ -1158,6 +1165,7 @@ configCompilerEx (Just hcFlavor) hcPath hcPkg conf verbosity = do
   (comp, maybePlatform, programsConfig) <- case hcFlavor of
     GHC   -> GHC.configure  verbosity hcPath hcPkg conf
     GHCJS -> GHCJS.configure verbosity hcPath hcPkg conf
+    GHCVM -> GHCVM.configure verbosity hcPath hcPkg conf
     JHC   -> JHC.configure  verbosity hcPath hcPkg conf
     LHC   -> do (_, _, ghcConf) <- GHC.configure  verbosity Nothing hcPkg conf
                 LHC.configure  verbosity hcPath Nothing ghcConf

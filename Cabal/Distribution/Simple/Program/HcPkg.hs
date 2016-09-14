@@ -7,7 +7,7 @@
 -- Portability :  portable
 --
 -- This module provides an library interface to the @hc-pkg@ program.
--- Currently only GHC, GHCJS and LHC have hc-pkg programs.
+-- Currently only GHC, GHCJS, GHCVM and LHC have hc-pkg programs.
 
 module Distribution.Simple.Program.HcPkg (
     HcPkgInfo(..),
@@ -393,4 +393,3 @@ verbosityOpts hpi v
   | v >= deafening = ["-v2"]
   | v == silent    = ["-v0"]
   | otherwise      = []
-

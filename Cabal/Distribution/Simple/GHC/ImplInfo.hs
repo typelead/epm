@@ -11,7 +11,7 @@
 
 module Distribution.Simple.GHC.ImplInfo (
         GhcImplInfo(..), getImplInfo,
-        ghcVersionImplInfo, ghcjsVersionImplInfo, lhcVersionImplInfo
+        ghcVersionImplInfo, ghcjsVersionImplInfo, ghcvmVersionImplInfo, lhcVersionImplInfo
         ) where
 
 import Distribution.Simple.Compiler
@@ -100,6 +100,26 @@ ghcjsVersionImplInfo _ghcjsVer _ghcVer = GhcImplInfo
   , reportsNoExt         = True
   , alwaysNondecIndent   = False
   , flagGhciScript       = True
+  , flagPackageConf      = False
+  , flagDebugInfo        = False
+  }
+
+ghcvmVersionImplInfo :: Version -> Version -> GhcImplInfo
+ghcvmVersionImplInfo _ghcvmVer _ghcVer = GhcImplInfo
+  { hasCcOdirBug         = False
+  , flagInfoLanguages    = True
+  , fakeRecordPuns       = False
+  , flagStubdir          = True
+  , flagOutputDir        = True
+  , noExtInSplitSuffix   = False
+  , flagFfiIncludes      = False
+  , flagBuildingCabalPkg = True
+  , flagPackageId        = True
+  , separateGccMingw     = False
+  , supportsHaskell2010  = True
+  , reportsNoExt         = True
+  , alwaysNondecIndent   = False
+  , flagGhciScript       = False -- TODO: Enable after GHCVMi
   , flagPackageConf      = False
   , flagDebugInfo        = False
   }

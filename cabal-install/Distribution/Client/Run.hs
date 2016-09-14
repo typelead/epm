@@ -71,6 +71,7 @@ run verbosity lbi exe exeArgs = do
 
   (path, runArgs) <-
     case compilerFlavor (compiler lbi) of
+      GHCVM -> die "Running not implemented yet for GHCVM."
       GHCJS -> do
         let (script, cmd, cmdArgs) =
               GHCJS.runCmd (withPrograms lbi)

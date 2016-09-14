@@ -20,6 +20,8 @@ module Distribution.Simple.Program.Builtin (
     ghcPkgProgram,
     ghcjsProgram,
     ghcjsPkgProgram,
+    ghcvmProgram,
+    ghcvmPkgProgram,
     lhcProgram,
     lhcPkgProgram,
     hmakeProgram,
@@ -81,6 +83,8 @@ builtinPrograms =
     , ghcPkgProgram
     , ghcjsProgram
     , ghcjsPkgProgram
+    , ghcvmProgram
+    , ghcvmPkgProgram
     , haskellSuiteProgram
     , haskellSuitePkgProgram
     , hmakeProgram
@@ -150,6 +154,22 @@ ghcjsPkgProgram = (simpleProgram "ghcjs-pkg") {
     programFindVersion = findProgramVersion "--version" $ \str ->
       -- Invoking "ghcjs-pkg --version" gives a string like
       -- "GHCJS package manager version 6.4.1"
+      case words str of
+        (_:_:_:_:ver:_) -> ver
+        _               -> ""
+  }
+
+ghcvmProgram :: Program
+ghcvmProgram = (simpleProgram "ghcvm") {
+    programFindVersion = findProgramVersion "--numeric-version" id
+  }
+
+-- note: version is the version number of the GHC version that ghcvm-pkg was built with
+ghcvmPkgProgram :: Program
+ghcvmPkgProgram = (simpleProgram "ghcvm-pkg") {
+    programFindVersion = findProgramVersion "--version" $ \str ->
+      -- Invoking "ghcvm-pkg --version" gives a string like
+      -- "GHCVM package manager version 0.0.1"
       case words str of
         (_:_:_:_:ver:_) -> ver
         _               -> ""

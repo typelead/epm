@@ -22,6 +22,7 @@ module Distribution.Simple.Haddock (
 
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
+import qualified Distribution.Simple.GHCVM as GHCVM
 
 -- local
 import Distribution.Package
@@ -290,6 +291,7 @@ componentGhcOptions verbosity lbi bi clbi odir =
   let f = case compilerFlavor (compiler lbi) of
             GHC   -> GHC.componentGhcOptions
             GHCJS -> GHCJS.componentGhcOptions
+            GHCVM -> GHCVM.componentGhcOptions
             _     -> error $
                        "Distribution.Simple.Haddock.componentGhcOptions:" ++
                        "haddock only supports GHC and GHCJS"
@@ -438,6 +440,7 @@ getGhcLibDir verbosity lbi = do
     l <- case compilerFlavor (compiler lbi) of
             GHC   -> GHC.getLibDir   verbosity lbi
             GHCJS -> GHCJS.getLibDir verbosity lbi
+            --GHCVM -> GHCVM.getLibDir verbosity lbi
             _     -> error "haddock only supports GHC and GHCJS"
     return $ mempty { argGhcLibDir = Flag l }
 
@@ -479,7 +482,7 @@ renderArgs verbosity tmpFileOpts version comp args k = do
              hClose h
              let pflag = "--prologue=" ++ prologueFileName
                  renderedArgs = pflag : renderPureArgs version comp args
-             if haddockSupportsResponseFiles 
+             if haddockSupportsResponseFiles
                then
                  withTempFileEx tmpFileOpts outputDir "haddock-response.txt" $
                     \responseFileName hf -> do

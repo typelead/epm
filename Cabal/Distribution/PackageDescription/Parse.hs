@@ -478,6 +478,8 @@ binfoFieldDescrs =
            options            (\path  binfo -> binfo{options=path})
  , optsField   "ghcjs-options" GHCJS
            options            (\path  binfo -> binfo{options=path})
+ , optsField   "ghcvm-options" GHCVM
+           options            (\path  binfo -> binfo{options=path})
  , optsField   "jhc-options"  JHC
            options            (\path  binfo -> binfo{options=path})
 
@@ -1037,7 +1039,7 @@ parsePackageDescription file = do
         -- Put these through the normal parsing pass too, so that we
         -- collect the ModRenamings
         let depFlds = filter isConstraint simplFlds
-        
+
         mapM_
             (\(Section l n _ _) -> lift . warning $
                 "Unexpected section '" ++ n ++ "' on line " ++ show l)

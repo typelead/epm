@@ -72,6 +72,7 @@ import Language.Haskell.Extension ( Extension(..)
 
 import Control.Monad            ( unless, when )
 import Data.Char                ( isSpace )
+import Data.Version             ( makeVersion )
 import qualified Data.Map as M  ( fromList  )
 #if __GLASGOW_HASKELL__ < 710
 import Data.Monoid              ( Monoid(..) )
@@ -87,128 +88,126 @@ configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
 configure verbosity hcPath hcPkgPath conf0 = do
   (ghcvmProg, ghcvmVersion, conf1) <-
     requireProgramVersion verbosity ghcvmProgram
-      (orLaterVersion (Version [0,1] []))
+      anyVersion --(orLaterVersion (Version [0,1] []))
       (userMaybeSpecifyPath "ghcvm" hcPath conf0)
-  Just ghcvmGhcVersion <- findGhcvmGhcVersion verbosity (programPath ghcvmProg)
+
   let implInfo = ghcvmVersionImplInfo ghcvmVersion ghcvmGhcVersion
 
   -- This is slightly tricky, we have to configure ghcvm first, then we use the
   -- location of ghcvm to help find ghcvm-pkg in the case that the user did not
   -- specify the location of ghc-pkg directly:
   (ghcvmPkgProg, ghcvmPkgVersion, conf2) <-
-    requireProgramVersion verbosity ghcvmPkgProgram {
-      programFindLocation = guessGhcvmPkgFromGhcvmPath ghcvmProg
-    }
+    requireProgramVersion verbosity ghcvmPkgProgram
+    {- TODO: Is this necessary? {programFindLocation = guessGhcvmPkgFromGhcvmPath ghcvmProg} -}
     anyVersion (userMaybeSpecifyPath "ghcvm-pkg" hcPkgPath conf1)
 
-  Just ghcvmPkgGhcvmVersion <- findGhcvmPkgGhcvmVersion
-                                  verbosity (programPath ghcvmPkgProg)
+  -- Just ghcvmPkgGhcvmVersion <- findGhcvmPkgGhcvmVersion
+  --                                 verbosity (programPath ghcvmPkgProg)
 
-  when (ghcvmVersion /= ghcvmPkgGhcvmVersion) $ die $
+  when (ghcvmVersion /= ghcvmPkgVersion) $ die $
        "Version mismatch between ghcvm and ghcvm-pkg: "
     ++ programPath ghcvmProg ++ " is version " ++ display ghcvmVersion ++ " "
-    ++ programPath ghcvmPkgProg ++ " is version " ++ display ghcvmPkgGhcvmVersion
+    ++ programPath ghcvmPkgProg ++ " is version " ++ display ghcvmPkgVersion
 
-  when (ghcvmGhcVersion /= ghcvmPkgVersion) $ die $
-       "Version mismatch between ghcvm and ghcvm-pkg: "
-    ++ programPath ghcvmProg
-    ++ " was built with GHC version " ++ display ghcvmGhcVersion ++ " "
-    ++ programPath ghcvmPkgProg
-    ++ " was built with GHC version " ++ display ghcvmPkgVersion
+  -- when (ghcvmGhcVersion /= ghcvmPkgVersion) $ die $
+  --      "Version mismatch between ghcvm and ghcvm-pkg: "
+  --   ++ programPath ghcvmProg
+  --   ++ " was built with GHC version " ++ display ghcvmGhcVersion ++ " "
+  --   ++ programPath ghcvmPkgProg
+  --   ++ " was built with GHC version " ++ display ghcvmPkgVersion
 
   -- be sure to use our versions of hsc2hs, c2hs, haddock and ghc
-  let hsc2hsProgram' =
-        hsc2hsProgram { programFindLocation =
-                          guessHsc2hsFromGhcvmPath ghcvmProg }
-      c2hsProgram' =
-        c2hsProgram { programFindLocation =
-                          guessC2hsFromGhcvmPath ghcvmProg }
+  -- let hsc2hsProgram' =
+  --       hsc2hsProgram { programFindLocation =
+  --                         guessHsc2hsFromGhcvmPath ghcvmProg }
+  --     c2hsProgram' =
+  --       c2hsProgram { programFindLocation =
+  --                         guessC2hsFromGhcvmPath ghcvmProg }
 
-      haddockProgram' =
-        haddockProgram { programFindLocation =
-                          guessHaddockFromGhcvmPath ghcvmProg }
-      conf3 = addKnownPrograms [ hsc2hsProgram', c2hsProgram', haddockProgram' ] conf2
+  --     haddockProgram' =
+  --       haddockProgram { programFindLocation =
+  --                         guessHaddockFromGhcvmPath ghcvmProg }
+  --     conf3 = addKnownPrograms [ hsc2hsProgram', c2hsProgram', haddockProgram' ] conf2
+  let conf3 = conf2 -- TODO: Account for other programs
 
   languages  <- Internal.getLanguages  verbosity implInfo ghcvmProg
   extensions <- Internal.getExtensions verbosity implInfo ghcvmProg
 
-  ghcInfo <- Internal.getGhcInfo verbosity implInfo ghcvmProg
-  let ghcInfoMap = M.fromList ghcInfo
+  ghcvmInfo <- Internal.getGhcInfo verbosity implInfo ghcvmProg
+  let ghcvmInfoMap = M.fromList ghcvmInfo
 
   let comp = Compiler {
         compilerId         = CompilerId GHCVM ghcvmVersion,
+        -- TODO: Make this unique for GHCVM?
         compilerAbiTag     = AbiTag $
           "ghc" ++ intercalate "_" (map show . versionBranch $ ghcvmGhcVersion),
         compilerCompat     = [CompilerId GHC ghcvmGhcVersion],
         compilerLanguages  = languages,
         compilerExtensions = extensions,
-        compilerProperties = ghcInfoMap
+        compilerProperties = ghcvmInfoMap
       }
-      compPlatform = Internal.targetPlatform ghcInfo
-  -- configure gcc and ld
-  let conf4 = if ghcvmNativeToo comp
-                     then Internal.configureToolchain implInfo
-                            ghcvmProg ghcInfoMap conf3
-                     else conf3
+      compPlatform = error "Platform not needed for GHCVM."
+                  -- Internal.targetPlatform ghcInfo
+  let conf4 = conf3
   return (comp, compPlatform, conf4)
 
 ghcvmNativeToo :: Compiler -> Bool
 ghcvmNativeToo = Internal.ghcLookupProperty "Native Too"
 
-guessGhcvmPkgFromGhcvmPath :: ConfiguredProgram -> Verbosity
-                           -> ProgramSearchPath -> IO (Maybe FilePath)
-guessGhcvmPkgFromGhcvmPath = guessToolFromGhcvmPath ghcvmPkgProgram
+-- guessGhcvmPkgFromGhcvmPath :: ConfiguredProgram -> Verbosity
+--                            -> ProgramSearchPath -> IO (Maybe FilePath)
+-- guessGhcvmPkgFromGhcvmPath = guessToolFromGhcvmPath ghcvmPkgProgram
 
-guessHsc2hsFromGhcvmPath :: ConfiguredProgram -> Verbosity
-                         -> ProgramSearchPath -> IO (Maybe FilePath)
-guessHsc2hsFromGhcvmPath = guessToolFromGhcvmPath hsc2hsProgram
+-- guessHsc2hsFromGhcvmPath :: ConfiguredProgram -> Verbosity
+--                          -> ProgramSearchPath -> IO (Maybe FilePath)
+-- guessHsc2hsFromGhcvmPath = guessToolFromGhcvmPath hsc2hsProgram
 
-guessC2hsFromGhcvmPath :: ConfiguredProgram -> Verbosity
-                       -> ProgramSearchPath -> IO (Maybe FilePath)
-guessC2hsFromGhcvmPath = guessToolFromGhcvmPath c2hsProgram
+-- guessC2hsFromGhcvmPath :: ConfiguredProgram -> Verbosity
+--                        -> ProgramSearchPath -> IO (Maybe FilePath)
+-- guessC2hsFromGhcvmPath = guessToolFromGhcvmPath c2hsProgram
 
-guessHaddockFromGhcvmPath :: ConfiguredProgram -> Verbosity
-                          -> ProgramSearchPath -> IO (Maybe FilePath)
-guessHaddockFromGhcvmPath = guessToolFromGhcvmPath haddockProgram
+-- guessHaddockFromGhcvmPath :: ConfiguredProgram -> Verbosity
+--                           -> ProgramSearchPath -> IO (Maybe FilePath)
+-- guessHaddockFromGhcvmPath = guessToolFromGhcvmPath haddockProgram
 
-guessToolFromGhcvmPath :: Program -> ConfiguredProgram
-                       -> Verbosity -> ProgramSearchPath
-                       -> IO (Maybe FilePath)
-guessToolFromGhcvmPath tool ghcvmProg verbosity searchpath
-  = do let toolname          = programName tool
-           path              = programPath ghcvmProg
-           dir               = takeDirectory path
-           versionSuffix     = takeVersionSuffix (dropExeExtension path)
-           guessNormal       = dir </> toolname <.> exeExtension
-           guessGhcvmVersioned = dir </> (toolname ++ "-ghcvm" ++ versionSuffix)
-                                 <.> exeExtension
-           guessGhcvm        = dir </> (toolname ++ "-ghcvm")
-                               <.> exeExtension
-           guessVersioned    = dir </> (toolname ++ versionSuffix) <.> exeExtension
-           guesses | null versionSuffix = [guessGhcvm, guessNormal]
-                   | otherwise          = [guessGhcvmVersioned,
-                                           guessGhcvm,
-                                           guessVersioned,
-                                           guessNormal]
-       info verbosity $ "looking for tool " ++ toolname
-         ++ " near compiler in " ++ dir
-       exists <- mapM doesFileExist guesses
-       case [ file | (file, True) <- zip guesses exists ] of
-                   -- If we can't find it near ghc, fall back to the usual
-                   -- method.
-         []     -> programFindLocation tool verbosity searchpath
-         (fp:_) -> do info verbosity $ "found " ++ toolname ++ " in " ++ fp
-                      return (Just fp)
+-- guessToolFromGhcvmPath :: Program -> ConfiguredProgram
+--                        -> Verbosity -> ProgramSearchPath
+--                        -> IO (Maybe FilePath)
+-- guessToolFromGhcvmPath tool ghcvmProg verbosity searchpath
+--   = do let toolname          = programName tool
+--            path              = programPath ghcvmProg
+--            dir               = takeDirectory path
+--            versionSuffix     = takeVersionSuffix (dropExeExtension path)
+--            guessNormal       = dir </> toolname <.> exeExtension
+--            guessGhcvmVersioned = dir </> (toolname ++ "-ghcvm" ++ versionSuffix)
+--                                  <.> exeExtension
+--            guessGhcvm        = dir </> (toolname ++ "-ghcvm")
+--                                <.> exeExtension
+--            guessVersioned    = dir </> (toolname ++ versionSuffix) <.> exeExtension
+--            guesses | null versionSuffix = [guessGhcvm, guessNormal]
+--                    | otherwise          = [guessGhcvmVersioned,
+--                                            guessGhcvm,
+--                                            guessVersioned,
+--                                            guessNormal]
+--        info verbosity $ "looking for tool " ++ toolname
+--          ++ " near compiler in " ++ dir
+--        exists <- mapM doesFileExist guesses
+--        case [ file | (file, True) <- zip guesses exists ] of
+--                    -- If we can't find it near ghc, fall back to the usual
+--                    -- method.
+--          []     -> programFindLocation tool verbosity searchpath
+--          (fp:_) -> do info verbosity $ "found " ++ toolname ++ " in " ++ fp
+--                       return (Just fp)
 
-  where takeVersionSuffix :: FilePath -> String
-        takeVersionSuffix = reverse . takeWhile (`elem ` "0123456789.-") .
-                            reverse
+--   where takeVersionSuffix :: FilePath -> String
+--         takeVersionSuffix = reverse . takeWhile (`elem ` "0123456789.-") .
+--                             reverse
 
-        dropExeExtension :: FilePath -> FilePath
-        dropExeExtension filepath =
-          case splitExtension filepath of
-            (filepath', extension) | extension == exeExtension -> filepath'
-                                   | otherwise                 -> filepath
+--         dropExeExtension :: FilePath -> FilePath
+--         dropExeExtension filepath =
+--           case splitExtension filepath of
+--             (filepath', extension) | extension == exeExtension -> filepath'
+--                                    | otherwise                 -> filepath
 
 
 -- | Given a single package DB, return all installed packages.
@@ -866,13 +865,13 @@ isDynamic = Internal.ghcLookupProperty "GHC Dynamic"
 supportsDynamicToo :: Compiler -> Bool
 supportsDynamicToo = Internal.ghcLookupProperty "Support dynamic-too"
 
-findGhcvmGhcVersion :: Verbosity -> FilePath -> IO (Maybe Version)
-findGhcvmGhcVersion verbosity pgm =
-  findProgramVersion "--numeric-ghc-version" id verbosity pgm
+-- findGhcvmGhcVersion :: Verbosity -> FilePath -> IO (Maybe Version)
+-- findGhcvmGhcVersion verbosity pgm =
+--   findProgramVersion "--numeric-ghc-version" id verbosity pgm
 
-findGhcvmPkgGhcvmVersion :: Verbosity -> FilePath -> IO (Maybe Version)
-findGhcvmPkgGhcvmVersion verbosity pgm =
-  findProgramVersion "--numeric-ghcvm-version" id verbosity pgm
+-- findGhcvmPkgGhcvmVersion :: Verbosity -> FilePath -> IO (Maybe Version)
+-- findGhcvmPkgGhcvmVersion verbosity pgm =
+--   findProgramVersion "--numeric-ghcvm-version" id verbosity pgm
 
 -- -----------------------------------------------------------------------------
 -- Registering
@@ -902,3 +901,7 @@ runCmd conf exe =
   where
     script = exe <.> "jsexe" </> "all" <.> "js"
     Just ghcvmProg = lookupProgram ghcvmProgram conf
+
+-- NOTE: GHCVM is frozen after 7.10.3
+ghcvmGhcVersion :: Version
+ghcvmGhcVersion = makeVersion [7,10,3]

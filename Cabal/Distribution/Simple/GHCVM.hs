@@ -146,8 +146,7 @@ configure verbosity hcPath hcPkgPath conf0 = do
         compilerExtensions = extensions,
         compilerProperties = ghcvmInfoMap
       }
-      compPlatform = error "Platform not needed for GHCVM."
-                  -- Internal.targetPlatform ghcInfo
+      compPlatform = Nothing -- Internal.targetPlatform ghcInfo
   let conf4 = conf3
   return (comp, compPlatform, conf4)
 

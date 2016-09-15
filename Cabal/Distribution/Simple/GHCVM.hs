@@ -231,16 +231,8 @@ toPackageIndex :: Verbosity
                -> ProgramConfiguration
                -> IO InstalledPackageIndex
 toPackageIndex verbosity pkgss conf = do
-  -- On Windows, various fields have $topdir/foo rather than full
-  -- paths. We need to substitute the right value in so that when
-  -- we, for example, call gcc, we have proper paths to give it.
-  topDir <- getLibDir' verbosity ghcvmProg
-  let indices = [ PackageIndex.fromList (map (Internal.substTopDir topDir) pkgs)
-                | (_, pkgs) <- pkgss ]
+  let indices = [ PackageIndex.fromList pkgs | (_, pkgs) <- pkgss ]
   return $! (mconcat indices)
-
-  where
-    Just ghcvmProg = lookupProgram ghcvmProgram conf
 
 checkPackageDbEnvVar :: IO ()
 checkPackageDbEnvVar =

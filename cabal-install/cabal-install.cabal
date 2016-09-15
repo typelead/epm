@@ -42,7 +42,7 @@ Flag network-uri
   description:  Get Network.URI from the network-uri package
   default:      True
 
-executable cabal
+executable cabalvm
     main-is:        Main.hs
     ghc-options:    -Wall -fwarn-tabs
     other-modules:

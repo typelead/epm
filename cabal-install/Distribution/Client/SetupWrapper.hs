@@ -208,13 +208,16 @@ setupWrapper verbosity options mpkg cmd flags extraArgs = do
 -- and execute an external Setup.hs script.
 --
 determineSetupMethod :: SetupScriptOptions -> BuildType -> SetupMethod
-determineSetupMethod options buildType'
-  | forceExternalSetupMethod options = externalSetupMethod
-  | isJust (useLoggingHandle options)
- || buildType' == Custom             = externalSetupMethod
-  | cabalVersion `withinRange`
-      useCabalVersion options        = internalSetupMethod
-  | otherwise                        = externalSetupMethod
+determineSetupMethod options buildType' = internalSetupMethod
+  -- TODO: For now, internalSetupMethod. After Cabal can be compiled with GHCVM,
+  --       allow for external scripts.
+  -- case () of
+  --   _ | forceExternalSetupMethod options -> externalSetupMethod
+  --     | isJust (useLoggingHandle options)
+  --     || buildType' == Custom             -> externalSetupMethod
+  --     | cabalVersion `withinRange`
+  --       useCabalVersion options        -> internalSetupMethod
+  --     | otherwise                      -> externalSetupMethod
 
 type SetupMethod = Verbosity
                 -> SetupScriptOptions

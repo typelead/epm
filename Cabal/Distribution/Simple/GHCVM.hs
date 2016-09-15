@@ -275,8 +275,8 @@ getGlobalPackageDB verbosity ghcvmProg =
     (reverse . dropWhile isSpace . reverse) `fmap`
      rawSystemProgramStdout verbosity ghcvmProg ["--print-global-package-db"]
 
-toJSLibName :: String -> String
-toJSLibName lib
+toJavaLibName :: String -> String
+toJavaLibName lib
   | takeExtension lib `elem` [".dll",".dylib",".so"]
                               = replaceExtension lib "js_so"
   | takeExtension lib == ".a" = replaceExtension lib "js_a"
@@ -321,7 +321,8 @@ buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
                       ghcOptNumJobs      = numJobs,
                       ghcOptPackageKey   = toFlag (pkgKey lbi),
                       ghcOptSigOf        = hole_insts,
-                      ghcOptInputModules = toNubListR $ libModules lib
+                      ghcOptInputModules = toNubListR $ libModules lib,
+                      ghcOptOutputFile   = toFlag target
                     }
       vanillaOpts' = vanillaOptsNoJavaLib `mappend` linkJavaLibOpts
       sharedOpts  = vanillaOpts' `mappend` mempty {
@@ -332,6 +333,7 @@ buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
       vanillaOpts = vanillaOpts' {
                         ghcOptExtraDefault = toNubListR ["-staticlib"]
                     }
+      target = libTargetDir </> mkJarName libName
 
   unless (forRepl || (null (libModules lib) && null javaSrcs)) $ do
        when isVanillaLib $ runGhcvmProg vanillaOpts
@@ -369,11 +371,11 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
 
   -- exeNameReal, the name that GHC really uses (with .exe on Windows)
   let exeNameReal = exeName' <.>
-                    (if takeExtension exeName' /= ('.':exeExtension)
-                       then exeExtension
+                    (if takeExtension exeName' /= ('.':jarExtension)
+                       then jarExtension
                        else "")
 
-  let targetDir = (buildDir lbi) </> exeName'
+  let targetDir = buildDir lbi </> exeName'
   let exeDir    = targetDir </> (exeName' ++ "-tmp")
   createDirectoryIfMissingVerbose verbosity True targetDir
   createDirectoryIfMissingVerbose verbosity True exeDir
@@ -382,143 +384,145 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
 
   -- Determine if program coverage should be enabled and if so, what
   -- '-hpcdir' should be.
-  let isCoverageEnabled = fromFlag $ configCoverage $ configFlags lbi
-      distPref = fromFlag $ configDistPref $ configFlags lbi
-      hpcdir way
-        | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way exeName'
-        | otherwise = mempty
+  -- let isCoverageEnabled = fromFlag $ configCoverage $ configFlags lbi
+  --     distPref = fromFlag $ configDistPref $ configFlags lbi
+  --     hpcdir way
+  --       | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way exeName'
+  --       | otherwise = mempty
 
   -- build executables
 
   srcMainFile         <- findFile (exeDir : hsSourceDirs exeBi) modPath
-  let isGhcvmDynamic      = isDynamic comp
-      dynamicTooSupported = supportsDynamicToo comp
-      buildRunner = case clbi of
-                       ExeComponentLocalBuildInfo {} -> False
-                       _                             -> True
-      isHaskellMain = elem (takeExtension srcMainFile) [".hs", ".lhs"]
-      jsSrcs        = jsSources exeBi
-      cSrcs         = cSources exeBi ++ [srcMainFile | not isHaskellMain]
-      cObjs         = map (`replaceExtension` objExtension) cSrcs
-      nativeToo     = ghcvmNativeToo comp
-      baseOpts   = (componentGhcOptions verbosity lbi exeBi clbi exeDir)
-                    `mappend` mempty {
-                      ghcOptMode         = toFlag GhcModeMake,
-                      ghcOptInputFiles   = toNubListR $
-                        [ srcMainFile | isHaskellMain],
-                      ghcOptInputModules = toNubListR $
-                        [ m | not isHaskellMain, m <- exeModules exe],
-                      ghcOptExtra =
-                        if buildRunner then toNubListR ["-build-runner"]
-                                       else mempty
-                    }
-      staticOpts = baseOpts `mappend` mempty {
-                      ghcOptDynLinkMode    = toFlag GhcStaticOnly,
-                      ghcOptHPCDir         = hpcdir Hpc.Vanilla
-                   }
-      profOpts   = adjustExts "p_hi" "p_o" baseOpts `mappend` mempty {
-                      ghcOptProfilingMode  = toFlag True,
-                      --ghcOptExtra          = toNubListR $ ghcvmProfOptions exeBi,
-                      ghcOptHPCDir         = hpcdir Hpc.Prof
-                    }
-      dynOpts    = adjustExts "dyn_hi" "dyn_o" baseOpts `mappend` mempty {
-                      ghcOptDynLinkMode    = toFlag GhcDynamicOnly,
-                      ghcOptExtra          = toNubListR $
-                                             ghcvmSharedOptions exeBi,
-                      ghcOptHPCDir         = hpcdir Hpc.Dyn
-                    }
-      dynTooOpts = adjustExts "dyn_hi" "dyn_o" staticOpts `mappend` mempty {
-                      ghcOptDynLinkMode    = toFlag GhcStaticAndDynamic,
-                      ghcOptHPCDir         = hpcdir Hpc.Dyn
-                    }
-      linkerOpts = mempty {
-                      ghcOptLinkOptions    = toNubListR $ PD.ldOptions exeBi,
-                      ghcOptLinkLibs       = toNubListR $ extraLibs exeBi,
-                      ghcOptLinkLibPath    = toNubListR $ extraLibDirs exeBi,
-                      ghcOptLinkFrameworks = toNubListR $ PD.frameworks exeBi,
-                      ghcOptInputFiles     = toNubListR $
-                                             [exeDir </> x | x <- cObjs] ++ jsSrcs
-                   }
-      replOpts   = baseOpts {
-                      ghcOptExtra          = overNubListR
-                                             Internal.filterGhciFlags
-                                             (ghcOptExtra baseOpts)
-                   }
-                   -- For a normal compile we do separate invocations of ghc for
-                   -- compiling as for linking. But for repl we have to do just
-                   -- the one invocation, so that one has to include all the
-                   -- linker stuff too, like -l flags and any .o files from C
-                   -- files etc.
-                   `mappend` linkerOpts
-                   `mappend` mempty {
-                      ghcOptMode           = toFlag GhcModeInteractive,
-                      ghcOptOptimisation   = toFlag GhcNoOptimisation
-                   }
-      commonOpts  | withProfExe lbi = profOpts
-                  | withDynExe  lbi = dynOpts
-                  | otherwise       = staticOpts
-      compileOpts | useDynToo = dynTooOpts
-                  | otherwise = commonOpts
-      withStaticExe = (not $ withProfExe lbi) && (not $ withDynExe lbi)
+  -- TODO: Implement
+  return ()
+  -- let isGhcvmDynamic      = isDynamic comp
+  --     dynamicTooSupported = supportsDynamicToo comp
+  --     buildRunner = case clbi of
+  --                      ExeComponentLocalBuildInfo {} -> False
+  --                      _                             -> True
+  --     isHaskellMain = elem (takeExtension srcMainFile) [".hs", ".lhs"]
+  --     jsSrcs        = jsSources exeBi
+  --     cSrcs         = cSources exeBi ++ [srcMainFile | not isHaskellMain]
+  --     cObjs         = map (`replaceExtension` objExtension) cSrcs
+  --     nativeToo     = ghcvmNativeToo comp
+  --     baseOpts   = (componentGhcOptions verbosity lbi exeBi clbi exeDir)
+  --                   `mappend` mempty {
+  --                     ghcOptMode         = toFlag GhcModeMake,
+  --                     ghcOptInputFiles   = toNubListR $
+  --                       [ srcMainFile | isHaskellMain],
+  --                     ghcOptInputModules = toNubListR $
+  --                       [ m | not isHaskellMain, m <- exeModules exe],
+  --                     ghcOptExtra =
+  --                       if buildRunner then toNubListR ["-build-runner"]
+  --                                      else mempty
+  --                   }
+  --     staticOpts = baseOpts `mappend` mempty {
+  --                     ghcOptDynLinkMode    = toFlag GhcStaticOnly,
+  --                     ghcOptHPCDir         = hpcdir Hpc.Vanilla
+  --                  }
+  --     profOpts   = adjustExts "p_hi" "p_o" baseOpts `mappend` mempty {
+  --                     ghcOptProfilingMode  = toFlag True,
+  --                     --ghcOptExtra          = toNubListR $ ghcvmProfOptions exeBi,
+  --                     ghcOptHPCDir         = hpcdir Hpc.Prof
+  --                   }
+  --     dynOpts    = adjustExts "dyn_hi" "dyn_o" baseOpts `mappend` mempty {
+  --                     ghcOptDynLinkMode    = toFlag GhcDynamicOnly,
+  --                     ghcOptExtra          = toNubListR $
+  --                                            ghcvmSharedOptions exeBi,
+  --                     ghcOptHPCDir         = hpcdir Hpc.Dyn
+  --                   }
+  --     dynTooOpts = adjustExts "dyn_hi" "dyn_o" staticOpts `mappend` mempty {
+  --                     ghcOptDynLinkMode    = toFlag GhcStaticAndDynamic,
+  --                     ghcOptHPCDir         = hpcdir Hpc.Dyn
+  --                   }
+  --     linkerOpts = mempty {
+  --                     ghcOptLinkOptions    = toNubListR $ PD.ldOptions exeBi,
+  --                     ghcOptLinkLibs       = toNubListR $ extraLibs exeBi,
+  --                     ghcOptLinkLibPath    = toNubListR $ extraLibDirs exeBi,
+  --                     ghcOptLinkFrameworks = toNubListR $ PD.frameworks exeBi,
+  --                     ghcOptInputFiles     = toNubListR $
+  --                                            [exeDir </> x | x <- cObjs] ++ jsSrcs
+  --                  }
+  --     replOpts   = baseOpts {
+  --                     ghcOptExtra          = overNubListR
+  --                                            Internal.filterGhciFlags
+  --                                            (ghcOptExtra baseOpts)
+  --                  }
+  --                  -- For a normal compile we do separate invocations of ghc for
+  --                  -- compiling as for linking. But for repl we have to do just
+  --                  -- the one invocation, so that one has to include all the
+  --                  -- linker stuff too, like -l flags and any .o files from C
+  --                  -- files etc.
+  --                  `mappend` linkerOpts
+  --                  `mappend` mempty {
+  --                     ghcOptMode           = toFlag GhcModeInteractive,
+  --                     ghcOptOptimisation   = toFlag GhcNoOptimisation
+  --                  }
+  --     commonOpts  | withProfExe lbi = profOpts
+  --                 | withDynExe  lbi = dynOpts
+  --                 | otherwise       = staticOpts
+  --     compileOpts | useDynToo = dynTooOpts
+  --                 | otherwise = commonOpts
+  --     withStaticExe = (not $ withProfExe lbi) && (not $ withDynExe lbi)
 
-      -- For building exe's that use TH with -prof or -dynamic we actually have
-      -- to build twice, once without -prof/-dynamic and then again with
-      -- -prof/-dynamic. This is because the code that TH needs to run at
-      -- compile time needs to be the vanilla ABI so it can be loaded up and run
-      -- by the compiler.
-      -- With dynamic-by-default GHC the TH object files loaded at compile-time
-      -- need to be .dyn_o instead of .o.
-      doingTH = EnableExtension TemplateHaskell `elem` allExtensions exeBi
-      -- Should we use -dynamic-too instead of compiling twice?
-      useDynToo = dynamicTooSupported && isGhcvmDynamic
-                  && doingTH && withStaticExe && null (ghcvmSharedOptions exeBi)
-      compileTHOpts | isGhcvmDynamic = dynOpts
-                    | otherwise      = staticOpts
-      compileForTH
-        | forRepl      = False
-        | useDynToo    = False
-        | isGhcvmDynamic = doingTH && (withProfExe lbi || withStaticExe)
-        | otherwise      = doingTH && (withProfExe lbi || withDynExe lbi)
+  --     -- For building exe's that use TH with -prof or -dynamic we actually have
+  --     -- to build twice, once without -prof/-dynamic and then again with
+  --     -- -prof/-dynamic. This is because the code that TH needs to run at
+  --     -- compile time needs to be the vanilla ABI so it can be loaded up and run
+  --     -- by the compiler.
+  --     -- With dynamic-by-default GHC the TH object files loaded at compile-time
+  --     -- need to be .dyn_o instead of .o.
+  --     doingTH = EnableExtension TemplateHaskell `elem` allExtensions exeBi
+  --     -- Should we use -dynamic-too instead of compiling twice?
+  --     useDynToo = dynamicTooSupported && isGhcvmDynamic
+  --                 && doingTH && withStaticExe && null (ghcvmSharedOptions exeBi)
+  --     compileTHOpts | isGhcvmDynamic = dynOpts
+  --                   | otherwise      = staticOpts
+  --     compileForTH
+  --       | forRepl      = False
+  --       | useDynToo    = False
+  --       | isGhcvmDynamic = doingTH && (withProfExe lbi || withStaticExe)
+  --       | otherwise      = doingTH && (withProfExe lbi || withDynExe lbi)
 
-      linkOpts = commonOpts `mappend`
-                 linkerOpts `mappend` mempty {
-                      ghcOptLinkNoHsMain   = toFlag (not isHaskellMain)
-                 }
+  --     linkOpts = commonOpts `mappend`
+  --                linkerOpts `mappend` mempty {
+  --                     ghcOptLinkNoHsMain   = toFlag (not isHaskellMain)
+  --                }
 
-  -- Build static/dynamic object files for TH, if needed.
-  when compileForTH $
-    runGhcvmProg compileTHOpts { ghcOptNoLink  = toFlag True
-                               , ghcOptNumJobs = numJobs }
+  -- -- Build static/dynamic object files for TH, if needed.
+  -- when compileForTH $
+  --   runGhcvmProg compileTHOpts { ghcOptNoLink  = toFlag True
+  --                              , ghcOptNumJobs = numJobs }
 
-  unless forRepl $
-    runGhcvmProg compileOpts { ghcOptNoLink  = toFlag True
-                             , ghcOptNumJobs = numJobs }
+  -- unless forRepl $
+  --   runGhcvmProg compileOpts { ghcOptNoLink  = toFlag True
+  --                            , ghcOptNumJobs = numJobs }
 
-  -- build any C sources
-  unless (null cSrcs || not nativeToo) $ do
-   info verbosity "Building C Sources..."
-   sequence_
-     [ do let opts = (Internal.componentCcGhcOptions verbosity implInfo lbi exeBi
-                         clbi exeDir filename) `mappend` mempty {
-                       ghcOptDynLinkMode   = toFlag (if withDynExe lbi
-                                                       then GhcDynamicOnly
-                                                       else GhcStaticOnly),
-                       ghcOptProfilingMode = toFlag (withProfExe lbi)
-                     }
-              odir = fromFlag (ghcOptObjDir opts)
-          createDirectoryIfMissingVerbose verbosity True odir
-          runGhcvmProg opts
-     | filename <- cSrcs ]
+  -- -- build any C sources
+  -- unless (null cSrcs || not nativeToo) $ do
+  --  info verbosity "Building C Sources..."
+  --  sequence_
+  --    [ do let opts = (Internal.componentCcGhcOptions verbosity implInfo lbi exeBi
+  --                        clbi exeDir filename) `mappend` mempty {
+  --                      ghcOptDynLinkMode   = toFlag (if withDynExe lbi
+  --                                                      then GhcDynamicOnly
+  --                                                      else GhcStaticOnly),
+  --                      ghcOptProfilingMode = toFlag (withProfExe lbi)
+  --                    }
+  --             odir = fromFlag (ghcOptObjDir opts)
+  --         createDirectoryIfMissingVerbose verbosity True odir
+  --         runGhcvmProg opts
+  --    | filename <- cSrcs ]
 
-  -- TODO: problem here is we need the .c files built first, so we can load them
-  -- with ghci, but .c files can depend on .h files generated by ghc by ffi
-  -- exports.
-  when forRepl $ runGhcvmProg replOpts
+  -- -- TODO: problem here is we need the .c files built first, so we can load them
+  -- -- with ghci, but .c files can depend on .h files generated by ghc by ffi
+  -- -- exports.
+  -- when forRepl $ runGhcvmProg replOpts
 
-  -- link:
-  unless forRepl $ do
-    info verbosity "Linking..."
-    runGhcvmProg linkOpts { ghcOptOutputFile = toFlag (targetDir </> exeNameReal) }
+  -- -- link:
+  -- unless forRepl $ do
+  --   info verbosity "Linking..."
+  --   runGhcvmProg linkOpts { ghcOptOutputFile = toFlag (targetDir </> exeNameReal) }
 
 -- |Install for ghc, .hi, .a and, if --with-ghci given, .o
 installLib    :: Verbosity
@@ -531,36 +535,16 @@ installLib    :: Verbosity
               -> ComponentLocalBuildInfo
               -> IO ()
 installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
-  whenVanilla $ copyModuleFiles "js_hi"
-  whenProf    $ copyModuleFiles "js_p_hi"
-  whenShared  $ copyModuleFiles "js_dyn_hi"
-
-  whenVanilla $ mapM_ (installOrdinary builtDir targetDir . toJSLibName) vanillaLibNames
-  whenProf    $ mapM_ (installOrdinary builtDir targetDir . toJSLibName) profileLibNames
-  whenShared  $ mapM_ (installShared   builtDir dynlibTargetDir . toJSLibName) sharedLibNames
-
-  when (ghcvmNativeToo $ compiler lbi) $ do
-    -- copy .hi files over:
-    whenVanilla $ copyModuleFiles "hi"
-    whenProf    $ copyModuleFiles "p_hi"
-    whenShared  $ copyModuleFiles "dyn_hi"
-
-    -- copy the built library files over:
-    whenVanilla $ mapM_ (installOrdinary builtDir targetDir)       vanillaLibNames
-    whenProf    $ mapM_ (installOrdinary builtDir targetDir)       profileLibNames
-    whenGHCi    $ mapM_ (installOrdinary builtDir targetDir)       ghciLibNames
-    whenShared  $ mapM_ (installShared   builtDir dynlibTargetDir) sharedLibNames
-
+  print ("installLib", targetDir, dynlibTargetDir, builtDir)
+  copyModuleFiles "hi"
+  when isVanillaLib $ mapM_ (installOrdinary builtDir targetDir) jarLibNames
+  when isSharedLib $ mapM_ (installOrdinary builtDir dynlibTargetDir) jarLibNames
   where
     install isShared srcDir dstDir name = do
-      let src = srcDir </> name
-          dst = dstDir </> name
       createDirectoryIfMissingVerbose verbosity True dstDir
-      if isShared
-        then do when (stripLibs lbi) $ Strip.stripLib verbosity
-                                       (hostPlatform lbi) (withPrograms lbi) src
-                installExecutableFile verbosity src dst
-        else installOrdinaryFile   verbosity src dst
+      installOrdinaryFile   verbosity src dst
+      where src = srcDir </> name
+            dst = dstDir </> name
 
     installOrdinary = install False
     installShared   = install True
@@ -571,17 +555,15 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
 
     cid = compilerId (compiler lbi)
     libNames = componentLibraries clbi
-    vanillaLibNames = map mkLibName              libNames
-    profileLibNames = map mkProfLibName          libNames
-    ghciLibNames    = map Internal.mkGHCiLibName libNames
-    sharedLibNames  = map (mkSharedLibName cid)  libNames
+    jarLibNames = map mkJarName libNames
 
     hasLib    = not $ null (libModules lib)
-                   && null (cSources (libBuildInfo lib))
-    whenVanilla = when (hasLib && withVanillaLib lbi)
-    whenProf    = when (hasLib && withProfLib    lbi)
-    whenGHCi    = when (hasLib && withGHCiLib    lbi)
-    whenShared  = when (hasLib && withSharedLib  lbi)
+                   && null (javaSources (libBuildInfo lib))
+    isVanillaLib = hasLib && withVanillaLib lbi
+    isSharedLib  = hasLib && withSharedLib  lbi
+
+mkJarName :: LibraryName -> String
+mkJarName (LibraryName lib) = lib <.> "jar"
 
 installExe :: Verbosity
               -> LocalBuildInfo
@@ -593,6 +575,7 @@ installExe :: Verbosity
               -> IO ()
 installExe verbosity lbi installDirs buildPref
            (progprefix, progsuffix) _pkg exe = do
+  --print ("installExe", targetDir, dynlibTargetDir, builtDir)
   let binDir = bindir installDirs
   createDirectoryIfMissingVerbose verbosity True binDir
   let exeFileName = exeName exe
@@ -631,13 +614,6 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
   --
   (ghcvmProg, _) <- requireProgram verbosity ghcvmProgram (withPrograms lbi)
   getProgramInvocationOutput verbosity (ghcInvocation ghcvmProg comp ghcArgs)
-
-adjustExts :: String -> String -> GhcOptions -> GhcOptions
-adjustExts hiSuf objSuf opts =
-  opts `mappend` mempty {
-    ghcOptHiSuffix  = toFlag hiSuf,
-    ghcOptObjSuffix = toFlag objSuf
-  }
 
 registerPackage :: Verbosity
                 -> InstalledPackageInfo
@@ -714,3 +690,6 @@ runCmd conf exe =
 -- NOTE: GHCVM is frozen after 7.10.3
 ghcvmGhcVersion :: Version
 ghcvmGhcVersion = makeVersion [7,10,3]
+
+jarExtension :: String
+jarExtension = "jar"

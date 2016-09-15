@@ -237,8 +237,8 @@ runGHC verbosity ghcProg comp opts = do
 
 
 ghcInvocation :: ConfiguredProgram -> Compiler -> GhcOptions -> ProgramInvocation
-ghcInvocation prog comp opts =
-    programInvocation prog (renderGhcOptions comp opts)
+ghcInvocation prog comp opts = programInvocation prog opts'
+  where opts' = renderGhcOptions comp opts
 
 renderGhcOptions :: Compiler -> GhcOptions -> [String]
 renderGhcOptions comp opts

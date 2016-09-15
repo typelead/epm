@@ -60,6 +60,10 @@ getImplInfo comp =
               Just ghcVer -> ghcjsVersionImplInfo (compilerVersion comp) ghcVer
               _  -> error ("Distribution.Simple.GHC.Props.getImplProps: " ++
                            "could not find GHC version for GHCJS compiler")
+    GHCVM -> case compilerCompatVersion GHC comp of
+              Just ghcVer -> ghcvmVersionImplInfo (compilerVersion comp) ghcVer
+              _  -> error ("Distribution.Simple.GHC.Props.getImplProps: " ++
+                           "could not find GHC version for GHCVM compiler")
     x     -> error ("Distribution.Simple.GHC.Props.getImplProps only works" ++
                     "for GHC-like compilers (GHC, GHCJS, LHC)" ++
                     ", but found " ++ show x)

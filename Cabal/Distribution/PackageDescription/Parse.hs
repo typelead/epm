@@ -426,6 +426,9 @@ binfoFieldDescrs =
  , listFieldWithSep vcat "js-sources"
            showFilePath       parseFilePathQ
            jsSources          (\paths binfo -> binfo{jsSources=paths})
+ , listFieldWithSep vcat "java-sources"
+           showFilePath       parseFilePathQ
+           javaSources        (\paths binfo -> binfo{javaSources=paths})
  , simpleField "default-language"
            (maybe empty disp) (option Nothing (fmap Just parseLanguageQ))
            defaultLanguage    (\lang  binfo -> binfo{defaultLanguage=lang})

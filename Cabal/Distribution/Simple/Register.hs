@@ -355,6 +355,8 @@ generalInstalledPackageInfo adjustRelIncDirs pkg ipid lib lbi clbi installDirs =
     hasLibrary = hasModules || not (null (cSources bi))
                             || (not (null (jsSources bi)) &&
                                 compilerFlavor (compiler lbi) == GHCJS)
+                            || (not (null (javaSources bi)) &&
+                                compilerFlavor (compiler lbi) == GHCVM)
 
     -- Since we currently don't decide the InstalledPackageId of our package
     -- until just before we register, we didn't have one for the re-exports

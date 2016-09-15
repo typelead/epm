@@ -425,13 +425,14 @@ matchBuildTarget3 cinfo str1 str2 str3 fexists =
 
 
 data ComponentInfo = ComponentInfo {
-       cinfoName    :: ComponentName,
-       cinfoStrName :: ComponentStringName,
-       cinfoSrcDirs :: [FilePath],
-       cinfoModules :: [ModuleName],
-       cinfoHsFiles :: [FilePath],   -- other hs files (like main.hs)
-       cinfoCFiles  :: [FilePath],
-       cinfoJsFiles :: [FilePath]
+       cinfoName      :: ComponentName,
+       cinfoStrName   :: ComponentStringName,
+       cinfoSrcDirs   :: [FilePath],
+       cinfoModules   :: [ModuleName],
+       cinfoHsFiles   :: [FilePath],   -- other hs files (like main.hs)
+       cinfoCFiles    :: [FilePath],
+       cinfoJsFiles   :: [FilePath],
+       cinfoJavaFiles :: [FilePath]
      }
 
 type ComponentStringName = String
@@ -439,13 +440,14 @@ type ComponentStringName = String
 pkgComponentInfo :: PackageDescription -> [ComponentInfo]
 pkgComponentInfo pkg =
     [ ComponentInfo {
-        cinfoName    = componentName c,
-        cinfoStrName = componentStringName pkg (componentName c),
-        cinfoSrcDirs = hsSourceDirs bi,
-        cinfoModules = componentModules c,
-        cinfoHsFiles = componentHsFiles c,
-        cinfoCFiles  = cSources bi,
-        cinfoJsFiles = jsSources bi
+        cinfoName      = componentName c,
+        cinfoStrName   = componentStringName pkg (componentName c),
+        cinfoSrcDirs   = hsSourceDirs bi,
+        cinfoModules   = componentModules c,
+        cinfoHsFiles   = componentHsFiles c,
+        cinfoCFiles    = cSources bi,
+        cinfoJsFiles   = jsSources bi,
+        cinfoJavaFiles = javaSources bi
       }
     | c <- pkgComponents pkg
     , let bi = componentBuildInfo c ]
@@ -662,16 +664,18 @@ matchComponentFile c str fexists =
         (matchPlusShadowing
           (msum [ matchModuleFileRooted   dirs ms      str
                 , matchOtherFileRooted    dirs hsFiles str ])
-          (msum [ matchModuleFileUnrooted      ms      str
-                , matchOtherFileUnrooted       hsFiles str
-                , matchOtherFileUnrooted       cFiles  str
-                , matchOtherFileUnrooted       jsFiles str ]))
+          (msum [ matchModuleFileUnrooted      ms        str
+                , matchOtherFileUnrooted       hsFiles   str
+                , matchOtherFileUnrooted       cFiles    str
+                , matchOtherFileUnrooted       jsFiles   str
+                , matchOtherFileUnrooted       javaFiles str ]))
   where
     dirs = cinfoSrcDirs c
     ms   = cinfoModules c
     hsFiles = cinfoHsFiles c
     cFiles  = cinfoCFiles c
     jsFiles = cinfoJsFiles c
+    javaFiles = cinfoJavaFiles c
 
 
 -- utils

@@ -444,7 +444,7 @@ instance Text ModuleReexport where
 
     parse = do
       mpkgname <- Parse.option Nothing $ do
-                    pkgname <- parse 
+                    pkgname <- parse
                     _       <- Parse.char ':'
                     return (Just pkgname)
       origname <- parse
@@ -771,6 +771,7 @@ data BuildInfo = BuildInfo {
         frameworks        :: [String], -- ^support frameworks for Mac OS X
         cSources          :: [FilePath],
         jsSources         :: [FilePath],
+        javaSources       :: [FilePath],
         hsSourceDirs      :: [FilePath], -- ^ where to look for the Haskell module hierarchy
         otherModules      :: [ModuleName], -- ^ non-exposed or non-main modules
 
@@ -810,6 +811,7 @@ instance Monoid BuildInfo where
     frameworks        = [],
     cSources          = [],
     jsSources         = [],
+    javaSources       = [],
     hsSourceDirs      = [],
     otherModules      = [],
     defaultLanguage   = Nothing,
@@ -840,6 +842,7 @@ instance Monoid BuildInfo where
     frameworks        = combineNub frameworks,
     cSources          = combineNub cSources,
     jsSources         = combineNub jsSources,
+    javaSources       = combineNub javaSources,
     hsSourceDirs      = combineNub hsSourceDirs,
     otherModules      = combineNub otherModules,
     defaultLanguage   = combineMby defaultLanguage,

@@ -242,9 +242,9 @@ ghcInvocation prog comp opts =
 
 renderGhcOptions :: Compiler -> GhcOptions -> [String]
 renderGhcOptions comp opts
-  | compilerFlavor comp `notElem` [GHC, GHCJS] =
+  | compilerFlavor comp `notElem` [GHC, GHCJS, GHCVM] =
     error $ "Distribution.Simple.Program.GHC.renderGhcOptions: "
-    ++ "compiler flavor must be 'GHC' or 'GHCJS'!"
+    ++ "compiler flavor must be 'GHC', 'GHCJS', or 'GHCVM'!"
   | otherwise =
   concat
   [ case flagToMaybe (ghcOptMode opts) of

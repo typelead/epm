@@ -316,7 +316,7 @@ buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
       implInfo = getImplInfo comp
       hole_insts = map (\(k,(p,n)) -> (k,(InstalledPackageInfo.packageKey p,n)))
                        (instantiatedWith lbi)
-      nativeToo = ghcvmNativeToo comp
+      nativeToo = False -- TODO: Remove
 
   (ghcvmProg, _) <- requireProgram verbosity ghcvmProgram (withPrograms lbi)
   let runGhcvmProg        = runGHC verbosity ghcvmProg comp
@@ -330,6 +330,7 @@ buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
 
   -- Determine if program coverage should be enabled and if so, what
   -- '-hpcdir' should be.
+  -- TODO: Implement HPC in GHCVM
   let isCoverageEnabled = fromFlag $ configCoverage $ configFlags lbi
       -- Component name. Not 'libName' because that has the "HS" prefix
       -- that GHC gives Haskell libraries.
@@ -812,13 +813,13 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
           ghcOptPackageKey   = toFlag (pkgKey lbi),
           ghcOptInputModules = toNubListR $ exposedModules lib
         }
-      profArgs = adjustExts "js_p_hi" "js_p_o" vanillaArgs `mappend` mempty {
-                     ghcOptProfilingMode = toFlag True,
-                     ghcOptExtra         = toNubListR (ghcvmProfOptions libBi)
-                 }
+      -- profArgs = adjustExts "js_p_hi" "js_p_o" vanillaArgs `mappend` mempty {
+      --                ghcOptProfilingMode = toFlag True,
+      --                ghcOptExtra         = toNubListR (ghcvmProfOptions libBi)
+      --            }
       ghcArgs = if withVanillaLib lbi then vanillaArgs
-           else if withProfLib    lbi then profArgs
-           else error "libAbiHash: Can't find an enabled library way"
+--           else if withProfLib    lbi then profArgs
+                else error "libAbiHash: Can't find an enabled library way"
   --
   (ghcvmProg, _) <- requireProgram verbosity ghcvmProgram (withPrograms lbi)
   getProgramInvocationOutput verbosity (ghcInvocation ghcvmProg comp ghcArgs)
@@ -858,8 +859,9 @@ ghcvmSharedOptions :: BuildInfo -> [String]
 ghcvmSharedOptions bi =
   hcSharedOptions GHC bi `mappend` hcSharedOptions GHCVM bi
 
+-- TODO: Correct default?
 isDynamic :: Compiler -> Bool
-isDynamic = Internal.ghcLookupProperty "GHC Dynamic"
+isDynamic = const True
 
 supportsDynamicToo :: Compiler -> Bool
 supportsDynamicToo = Internal.ghcLookupProperty "Support dynamic-too"

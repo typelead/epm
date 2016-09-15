@@ -605,8 +605,7 @@ configure (pkg_descr0, pbi) cfg
                   not (GHC.isDynamic comp)
                 CompilerId GHCJS _ ->
                   not (GHCJS.isDynamic comp)
-                CompilerId GHCVM _ ->
-                  not (GHCVM.isDynamic comp)
+                CompilerId GHCVM _ -> False -- TODO: Support GHCVMi
                 _ -> False
 
         let sharedLibsByDefault
@@ -621,8 +620,7 @@ configure (pkg_descr0, pbi) cfg
                   GHC.isDynamic comp
                 CompilerId GHCJS _ ->
                   GHCJS.isDynamic comp
-                CompilerId GHCVM _ ->
-                  GHCVM.isDynamic comp
+                CompilerId GHCVM _ -> False -- TODO: Support GHCVMi
                 _ -> False
             withSharedLib_ =
                 -- build shared libraries if required by GHC or by the

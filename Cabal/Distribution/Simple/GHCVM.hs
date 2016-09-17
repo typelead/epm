@@ -46,7 +46,8 @@ import Distribution.Simple.Program
          , userMaybeSpecifyPath, programPath
          , lookupProgram, addKnownPrograms
          , ghcvmProgram, ghcvmPkgProgram, c2hsProgram, hsc2hsProgram
-         , ldProgram, haddockProgram, stripProgram )
+         , ldProgram, haddockProgram, stripProgram
+         , javaProgram, javacProgram )
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import qualified Distribution.Simple.Program.Ar    as Ar
 import qualified Distribution.Simple.Program.Ld    as Ld
@@ -147,8 +148,9 @@ configure verbosity hcPath hcPkgPath conf0 = do
         compilerProperties = ghcvmInfoMap
       }
       compPlatform = Nothing -- Internal.targetPlatform ghcInfo
-  let conf4 = conf3
-  return (comp, compPlatform, conf4)
+  (_, conf4) <- requireProgram verbosity javaProgram conf3
+  (_, conf5) <- requireProgram verbosity javacProgram conf4
+  return (comp, compPlatform, conf5)
 
 ghcvmNativeToo :: Compiler -> Bool
 ghcvmNativeToo = Internal.ghcLookupProperty "Native Too"
@@ -535,7 +537,6 @@ installLib    :: Verbosity
               -> ComponentLocalBuildInfo
               -> IO ()
 installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
-  print ("installLib", targetDir, dynlibTargetDir, builtDir)
   copyModuleFiles "hi"
   when isVanillaLib $ mapM_ (installOrdinary builtDir targetDir) jarLibNames
   when isSharedLib $ mapM_ (installOrdinary builtDir dynlibTargetDir) jarLibNames

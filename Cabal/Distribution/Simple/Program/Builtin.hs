@@ -21,6 +21,8 @@ module Distribution.Simple.Program.Builtin (
     ghcjsProgram,
     ghcjsPkgProgram,
     ghcvmProgram,
+    javaProgram,
+    javacProgram,
     ghcvmPkgProgram,
     lhcProgram,
     lhcPkgProgram,
@@ -110,6 +112,9 @@ builtinPrograms =
     , tarProgram
     -- configuration tools
     , pkgConfigProgram
+    -- GHCVM-specific tools
+    , javaProgram
+    , javacProgram
     ]
 
 ghcProgram :: Program
@@ -162,6 +167,26 @@ ghcjsPkgProgram = (simpleProgram "ghcjs-pkg") {
 ghcvmProgram :: Program
 ghcvmProgram = (simpleProgram "ghcvm") {
     programFindVersion = findProgramVersion "--numeric-version" id
+  }
+
+javaProgram :: Program
+javaProgram = (simpleProgram "java") {
+    programFindVersion = findProgramVersion "-version" $ \str ->
+        -- Invoking "java -version" gives a string like
+        -- "java version \"1.7.0_79\""
+        case words (head (lines str)) of
+          (_:_:quotedVersion:_) -> drop 1 (init quotedVersion)
+          _                     -> error $ "Bad java version"
+  }
+
+javacProgram :: Program
+javacProgram = (simpleProgram "javac") {
+    programFindVersion = findProgramVersion "-version" $ \str ->
+        -- Invoking "javac -version" gives a string like
+        -- "javac 1.7.0_79"
+        case words str of
+          (_:version:_) -> version
+          _             -> error $ "Bad java version"
   }
 
 -- note: version is the version number of the GHC version that ghcvm-pkg was built with

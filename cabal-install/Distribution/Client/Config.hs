@@ -475,7 +475,7 @@ defaultExtraPath = do
   return [dir </> "bin"]
 
 defaultCompiler :: CompilerFlavor
-defaultCompiler = fromMaybe GHC defaultCompilerFlavor
+defaultCompiler = fromMaybe GHCVM defaultCompilerFlavor
 
 defaultUserInstall :: Bool
 defaultUserInstall = True

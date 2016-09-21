@@ -446,7 +446,7 @@ initialSavedConfig = do
 --TODO: misleading, there's no way to override this default
 --      either make it possible or rename to simply getCabalDir.
 defaultCabalDir :: IO FilePath
-defaultCabalDir = getAppUserDataDirectory "cabal"
+defaultCabalDir = getAppUserDataDirectory "cabalvm"
 
 defaultConfigFile :: IO FilePath
 defaultConfigFile = do

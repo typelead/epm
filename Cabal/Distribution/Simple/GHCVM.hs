@@ -12,22 +12,23 @@ module Distribution.Simple.GHCVM (
         componentGhcOptions,
         getLibDir,
         isDynamic,
-        getGlobalPackageDB,
-        runCmd
+        getGlobalPackageDB
   ) where
 
 import Distribution.Simple.GHC.ImplInfo ( getImplInfo, ghcvmVersionImplInfo )
 import qualified Distribution.Simple.GHC.Internal as Internal
+import Distribution.Package ( InstalledPackageId )
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..)
          , Library(..), libModules, exeModules
          , hcOptions, hcProfOptions, hcSharedOptions
          , allExtensions )
 import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
+         ( InstalledPackageInfo, libraryDirs, hsLibraries )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
                                 ( InstalledPackageInfo_(..) )
-import Distribution.Simple.PackageIndex ( InstalledPackageIndex )
+import Distribution.Simple.PackageIndex ( InstalledPackageIndex, lookupInstalledPackageId,
+                                          dependencyClosure, allPackages )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
@@ -44,6 +45,7 @@ import Distribution.Simple.Program
          , getProgramInvocationOutput
          , requireProgramVersion, requireProgram
          , userMaybeSpecifyPath, programPath
+         , locationPath
          , lookupProgram, addKnownPrograms
          , ghcvmProgram, ghcvmPkgProgram, c2hsProgram, hsc2hsProgram
          , ldProgram, haddockProgram, stripProgram
@@ -73,13 +75,15 @@ import Language.Haskell.Extension ( Extension(..)
 
 import Control.Monad            ( unless, when )
 import Data.Char                ( isSpace )
+import Data.Maybe               ( catMaybes )
 import Data.Version             ( makeVersion )
 import qualified Data.Map as M  ( fromList  )
 #if __GLASGOW_HASKELL__ < 710
 import Data.Monoid              ( Monoid(..) )
 #endif
-import System.Directory         ( doesFileExist )
-import System.FilePath          ( (</>), (<.>), takeExtension,
+import System.Directory         ( doesFileExist, copyFile, setPermissions, getPermissions,
+                                  executable )
+import System.FilePath          ( (</>), (<.>), (-<.>), takeExtension,
                                   takeDirectory, replaceExtension,
                                   splitExtension )
 
@@ -366,165 +370,49 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
   exe@Executable { exeName = exeName', modulePath = modPath } clbi = do
 
   (ghcvmProg, _) <- requireProgram verbosity ghcvmProgram (withPrograms lbi)
-  let comp         = compiler lbi
-      implInfo     = getImplInfo comp
-      runGhcvmProg = runGHC verbosity ghcvmProg comp
-      exeBi        = buildInfo exe
+  let runGhcvmProg = runGHC verbosity ghcvmProg comp
 
-  -- exeNameReal, the name that GHC really uses (with .exe on Windows)
-  let exeNameReal = exeName' <.>
-                    (if takeExtension exeName' /= ('.':jarExtension)
-                       then jarExtension
-                       else "")
-
-  let targetDir = buildDir lbi </> exeName'
-  let exeDir    = targetDir </> (exeName' ++ "-tmp")
-  createDirectoryIfMissingVerbose verbosity True targetDir
   createDirectoryIfMissingVerbose verbosity True exeDir
-  -- TODO: do we need to put hs-boot files into place for mutually recursive
-  -- modules?  FIX: what about exeName.hi-boot?
 
-  -- Determine if program coverage should be enabled and if so, what
-  -- '-hpcdir' should be.
-  -- let isCoverageEnabled = fromFlag $ configCoverage $ configFlags lbi
-  --     distPref = fromFlag $ configDistPref $ configFlags lbi
-  --     hpcdir way
-  --       | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way exeName'
-  --       | otherwise = mempty
+  srcMainFile <- findFile (hsSourceDirs exeBi) modPath
+  let baseOpts = (componentGhcOptions verbosity lbi exeBi clbi exeDir)
+                 `mappend` mempty {
+                   ghcOptMode         = toFlag GhcModeMake,
+                   ghcOptInputFiles   = toNubListR $ srcMainFile : javaSrcs,
+                   ghcOptInputModules = toNubListR $ exeModules exe,
+                   ghcOptNumJobs      = numJobs,
+                   ghcOptOutputFile   = toFlag exeJar,
+                   ghcOptShared       = toFlag isShared
+                 }
 
-  -- build executables
-
-  srcMainFile         <- findFile (exeDir : hsSourceDirs exeBi) modPath
-  -- TODO: Implement
-  return ()
-  -- let isGhcvmDynamic      = isDynamic comp
-  --     dynamicTooSupported = supportsDynamicToo comp
-  --     buildRunner = case clbi of
-  --                      ExeComponentLocalBuildInfo {} -> False
-  --                      _                             -> True
-  --     isHaskellMain = elem (takeExtension srcMainFile) [".hs", ".lhs"]
-  --     jsSrcs        = jsSources exeBi
-  --     cSrcs         = cSources exeBi ++ [srcMainFile | not isHaskellMain]
-  --     cObjs         = map (`replaceExtension` objExtension) cSrcs
-  --     nativeToo     = ghcvmNativeToo comp
-  --     baseOpts   = (componentGhcOptions verbosity lbi exeBi clbi exeDir)
-  --                   `mappend` mempty {
-  --                     ghcOptMode         = toFlag GhcModeMake,
-  --                     ghcOptInputFiles   = toNubListR $
-  --                       [ srcMainFile | isHaskellMain],
-  --                     ghcOptInputModules = toNubListR $
-  --                       [ m | not isHaskellMain, m <- exeModules exe],
-  --                     ghcOptExtra =
-  --                       if buildRunner then toNubListR ["-build-runner"]
-  --                                      else mempty
-  --                   }
-  --     staticOpts = baseOpts `mappend` mempty {
-  --                     ghcOptDynLinkMode    = toFlag GhcStaticOnly,
-  --                     ghcOptHPCDir         = hpcdir Hpc.Vanilla
-  --                  }
-  --     profOpts   = adjustExts "p_hi" "p_o" baseOpts `mappend` mempty {
-  --                     ghcOptProfilingMode  = toFlag True,
-  --                     --ghcOptExtra          = toNubListR $ ghcvmProfOptions exeBi,
-  --                     ghcOptHPCDir         = hpcdir Hpc.Prof
-  --                   }
-  --     dynOpts    = adjustExts "dyn_hi" "dyn_o" baseOpts `mappend` mempty {
-  --                     ghcOptDynLinkMode    = toFlag GhcDynamicOnly,
-  --                     ghcOptExtra          = toNubListR $
-  --                                            ghcvmSharedOptions exeBi,
-  --                     ghcOptHPCDir         = hpcdir Hpc.Dyn
-  --                   }
-  --     dynTooOpts = adjustExts "dyn_hi" "dyn_o" staticOpts `mappend` mempty {
-  --                     ghcOptDynLinkMode    = toFlag GhcStaticAndDynamic,
-  --                     ghcOptHPCDir         = hpcdir Hpc.Dyn
-  --                   }
-  --     linkerOpts = mempty {
-  --                     ghcOptLinkOptions    = toNubListR $ PD.ldOptions exeBi,
-  --                     ghcOptLinkLibs       = toNubListR $ extraLibs exeBi,
-  --                     ghcOptLinkLibPath    = toNubListR $ extraLibDirs exeBi,
-  --                     ghcOptLinkFrameworks = toNubListR $ PD.frameworks exeBi,
-  --                     ghcOptInputFiles     = toNubListR $
-  --                                            [exeDir </> x | x <- cObjs] ++ jsSrcs
-  --                  }
-  --     replOpts   = baseOpts {
-  --                     ghcOptExtra          = overNubListR
-  --                                            Internal.filterGhciFlags
-  --                                            (ghcOptExtra baseOpts)
-  --                  }
-  --                  -- For a normal compile we do separate invocations of ghc for
-  --                  -- compiling as for linking. But for repl we have to do just
-  --                  -- the one invocation, so that one has to include all the
-  --                  -- linker stuff too, like -l flags and any .o files from C
-  --                  -- files etc.
-  --                  `mappend` linkerOpts
-  --                  `mappend` mempty {
-  --                     ghcOptMode           = toFlag GhcModeInteractive,
-  --                     ghcOptOptimisation   = toFlag GhcNoOptimisation
-  --                  }
-  --     commonOpts  | withProfExe lbi = profOpts
-  --                 | withDynExe  lbi = dynOpts
-  --                 | otherwise       = staticOpts
-  --     compileOpts | useDynToo = dynTooOpts
-  --                 | otherwise = commonOpts
-  --     withStaticExe = (not $ withProfExe lbi) && (not $ withDynExe lbi)
-
-  --     -- For building exe's that use TH with -prof or -dynamic we actually have
-  --     -- to build twice, once without -prof/-dynamic and then again with
-  --     -- -prof/-dynamic. This is because the code that TH needs to run at
-  --     -- compile time needs to be the vanilla ABI so it can be loaded up and run
-  --     -- by the compiler.
-  --     -- With dynamic-by-default GHC the TH object files loaded at compile-time
-  --     -- need to be .dyn_o instead of .o.
-  --     doingTH = EnableExtension TemplateHaskell `elem` allExtensions exeBi
-  --     -- Should we use -dynamic-too instead of compiling twice?
-  --     useDynToo = dynamicTooSupported && isGhcvmDynamic
-  --                 && doingTH && withStaticExe && null (ghcvmSharedOptions exeBi)
-  --     compileTHOpts | isGhcvmDynamic = dynOpts
-  --                   | otherwise      = staticOpts
-  --     compileForTH
-  --       | forRepl      = False
-  --       | useDynToo    = False
-  --       | isGhcvmDynamic = doingTH && (withProfExe lbi || withStaticExe)
-  --       | otherwise      = doingTH && (withProfExe lbi || withDynExe lbi)
-
-  --     linkOpts = commonOpts `mappend`
-  --                linkerOpts `mappend` mempty {
-  --                     ghcOptLinkNoHsMain   = toFlag (not isHaskellMain)
-  --                }
-
-  -- -- Build static/dynamic object files for TH, if needed.
-  -- when compileForTH $
-  --   runGhcvmProg compileTHOpts { ghcOptNoLink  = toFlag True
-  --                              , ghcOptNumJobs = numJobs }
-
-  -- unless forRepl $
-  --   runGhcvmProg compileOpts { ghcOptNoLink  = toFlag True
-  --                            , ghcOptNumJobs = numJobs }
-
-  -- -- build any C sources
-  -- unless (null cSrcs || not nativeToo) $ do
-  --  info verbosity "Building C Sources..."
-  --  sequence_
-  --    [ do let opts = (Internal.componentCcGhcOptions verbosity implInfo lbi exeBi
-  --                        clbi exeDir filename) `mappend` mempty {
-  --                      ghcOptDynLinkMode   = toFlag (if withDynExe lbi
-  --                                                      then GhcDynamicOnly
-  --                                                      else GhcStaticOnly),
-  --                      ghcOptProfilingMode = toFlag (withProfExe lbi)
-  --                    }
-  --             odir = fromFlag (ghcOptObjDir opts)
-  --         createDirectoryIfMissingVerbose verbosity True odir
-  --         runGhcvmProg opts
-  --    | filename <- cSrcs ]
-
-  -- -- TODO: problem here is we need the .c files built first, so we can load them
-  -- -- with ghci, but .c files can depend on .h files generated by ghc by ffi
-  -- -- exports.
-  -- when forRepl $ runGhcvmProg replOpts
-
-  -- -- link:
-  -- unless forRepl $ do
-  --   info verbosity "Linking..."
-  --   runGhcvmProg linkOpts { ghcOptOutputFile = toFlag (targetDir </> exeNameReal) }
+  runGhcvmProg baseOpts
+  -- Generate .sh file
+  classPaths' <- if isShared
+                then getDependencyClassPaths
+                     (installedPkgs lbi)
+                     (map fst $ componentPackageDeps clbi)
+                else return []
+  let classPaths = classPaths'
+      generateExeScript = "#!/usr/bin/env sh\n"
+                         ++ "DIR=\"$( cd \"$( dirname \"${BASH_SOURCE[0]}\" )\" && pwd )\"\n"
+                         ++ "java -classpath \"$DIR/" ++ exeNameReal
+                         ++ (if null classPaths then "" else ':' : intercalate ":" classPaths)
+                         ++ "\" ghcvm.main\n"
+      scriptFile = targetDir </> (exeNameReal -<.> "sh")
+  writeUTF8File scriptFile generateExeScript
+  p <- getPermissions scriptFile
+  setPermissions scriptFile (p {executable = True})
+  where comp         = compiler lbi
+        implInfo     = getImplInfo comp
+        exeBi        = buildInfo exe
+        exeNameReal = exeName' <.> (if takeExtension exeName' /= ('.':jarExtension)
+                                    then jarExtension
+                                    else "")
+        isShared = withDynExe lbi
+        javaSrcs = javaSources exeBi
+        targetDir = buildDir lbi </> exeName'
+        exeDir    = targetDir </> (exeName' ++ "-tmp")
+        exeJar    = targetDir </> exeNameReal
 
 -- |Install for ghc, .hi, .a and, if --with-ghci given, .o
 installLib    :: Verbosity
@@ -578,19 +466,15 @@ installExe verbosity lbi installDirs buildPref
            (progprefix, progsuffix) _pkg exe = do
   --print ("installExe", targetDir, dynlibTargetDir, builtDir)
   let binDir = bindir installDirs
+      toDir x = binDir </> x
+      buildDir = buildPref </> exeName exe
+      fromDir x = buildDir </> x
+      exeNameExt ext = exeName exe <.> ext
+      copy x = copyFile (fromDir x) (toDir x)
   createDirectoryIfMissingVerbose verbosity True binDir
-  let exeFileName = exeName exe
-      fixedExeBaseName = progprefix ++ exeName exe ++ progsuffix
-      installBinary dest = do
-        rawSystemProgramConf verbosity ghcvmProgram (withPrograms lbi) $
-          [ "--install-executable"
-          , buildPref </> exeName exe </> exeFileName
-          , "-o", dest
-          ] ++
-          case (stripExes lbi, lookupProgram stripProgram $ withPrograms lbi) of
-           (True, Just strip) -> ["-strip-program", programPath strip]
-           _                  -> []
-  installBinary (binDir </> fixedExeBaseName)
+  copy (exeNameExt "sh")
+  copy (exeNameExt "jar")
+  --copyFile (fromDir (exeNameExt "jar")) (toDir (progprefix ++ exeName exe ++ progsuffix))
 
 libAbiHash :: Verbosity -> PackageDescription -> LocalBuildInfo
            -> Library -> ComponentLocalBuildInfo -> IO String
@@ -627,14 +511,19 @@ registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs =
   HcPkg.reregister (hcPkgInfo $ withPrograms lbi) verbosity packageDbs
     (Right installedPkgInfo)
 
+-- TODO: Pass javac as well
 componentGhcOptions :: Verbosity -> LocalBuildInfo
                     -> BuildInfo -> ComponentLocalBuildInfo -> FilePath
                     -> GhcOptions
 componentGhcOptions verbosity lbi bi clbi odir =
   let opts = Internal.componentGhcOptions verbosity lbi bi clbi odir
-  in  opts { ghcOptExtra = ghcOptExtra opts `mappend` toNubListR
-                             (hcOptions GHCVM bi)
-           }
+  in  opts
+  {
+    ghcOptExtra = ghcOptExtra opts
+      `mappend` toNubListR (["-pgmjavac", javacPath] ++  (hcOptions GHCVM bi))
+  }
+  where Just javacProg = lookupProgram javacProgram (withPrograms lbi)
+        javacPath = locationPath (programLocation javacProg)
 
 -- ghcvmProfOptions :: BuildInfo -> [String]
 -- ghcvmProfOptions bi =
@@ -674,23 +563,16 @@ hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcvmPkgProg
     Just ghcvmPkgProg = lookupProgram ghcvmPkgProgram conf
     Just ver          = programVersion ghcvmPkgProg
 
--- | Get the JavaScript file name and command and arguments to run a
---   program compiled by GHCVM
---   the exe should be the base program name without exe extension
-runCmd :: ProgramConfiguration -> FilePath
-            -> (FilePath, FilePath, [String])
-runCmd conf exe =
-  ( script
-  , programPath ghcvmProg
-  , programDefaultArgs ghcvmProg ++ programOverrideArgs ghcvmProg ++ ["--run"]
-  )
-  where
-    script = exe <.> "jsexe" </> "all" <.> "js"
-    Just ghcvmProg = lookupProgram ghcvmProgram conf
-
 -- NOTE: GHCVM is frozen after 7.10.3
 ghcvmGhcVersion :: Version
 ghcvmGhcVersion = makeVersion [7,10,3]
 
 jarExtension :: String
 jarExtension = "jar"
+
+getDependencyClassPaths :: InstalledPackageIndex -> [InstalledPackageId] -> IO [FilePath]
+getDependencyClassPaths packageIndex packages = fmap concat $ mapM hsLibraryPaths packageInfos
+  where Left closurePackageIndex = dependencyClosure packageIndex packages
+        packageInfos = allPackages closurePackageIndex
+        hsLibraryPaths pi = mapM (findFile (libraryDirs pi))
+                                 (map (<.> "jar") $ hsLibraries pi)

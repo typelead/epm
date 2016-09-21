@@ -129,6 +129,8 @@ module Distribution.Simple.Utils (
         wrapLine,
   ) where
 
+import Debug.Trace(traceShow)
+
 import Control.Monad
     ( join, when, unless, filterM )
 import Control.Concurrent.MVar
@@ -450,7 +452,8 @@ rawSystemStdout verbosity path args = do
                                                   Nothing False
   when (exitCode /= ExitSuccess) $
     die errors
-  return output
+  -- TODO: This may cause bugs later
+  return $ output ++ errors
 
 -- | Run a command and return its output, errors and exit status. Optionally
 -- also supply some input. Also provides control over whether the binary/text

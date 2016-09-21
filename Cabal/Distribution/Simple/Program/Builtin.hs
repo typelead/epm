@@ -169,14 +169,20 @@ ghcvmProgram = (simpleProgram "ghcvm") {
     programFindVersion = findProgramVersion "--numeric-version" id
   }
 
+-- TODO: Clean this up
+underscoreToDot = map (\c -> if c == '_' then '.' else c)
+
 javaProgram :: Program
 javaProgram = (simpleProgram "java") {
     programFindVersion = findProgramVersion "-version" $ \str ->
+        let badVersion = error $ "java: bad version\n" ++ str
         -- Invoking "java -version" gives a string like
         -- "java version \"1.7.0_79\""
-        case words (head (lines str)) of
-          (_:_:quotedVersion:_) -> drop 1 (init quotedVersion)
-          _                     -> error $ "Bad java version"
+        in case lines str of
+             (l:_) -> case words l of
+               (_:_:quotedVersion:_) -> underscoreToDot $ drop 1 (init quotedVersion)
+               _ -> badVersion
+             _ -> badVersion
   }
 
 javacProgram :: Program
@@ -185,8 +191,8 @@ javacProgram = (simpleProgram "javac") {
         -- Invoking "javac -version" gives a string like
         -- "javac 1.7.0_79"
         case words str of
-          (_:version:_) -> version
-          _             -> error $ "Bad java version"
+          (_:version:_) -> underscoreToDot version
+          _             -> error $ "javac: Bad version\n" ++ str
   }
 
 -- note: version is the version number of the GHC version that ghcvm-pkg was built with

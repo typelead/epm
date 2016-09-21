@@ -71,7 +71,10 @@ run verbosity lbi exe exeArgs = do
 
   (path, runArgs) <-
     case compilerFlavor (compiler lbi) of
-      GHCVM -> die "Running not implemented yet for GHCVM."
+      GHCVM -> do
+         p <- tryCanonicalizePath $
+            buildPref </> exeName exe </> (exeName exe <.> "sh")
+         return (p, [])
       GHCJS -> do
         let (script, cmd, cmdArgs) =
               GHCJS.runCmd (withPrograms lbi)

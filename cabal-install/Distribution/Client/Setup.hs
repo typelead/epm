@@ -145,9 +145,9 @@ globalCommand :: [Command action] -> CommandUI GlobalFlags
 globalCommand commands = CommandUI {
     commandName         = "",
     commandSynopsis     =
-         "Command line interface to the Haskell Cabal infrastructure.",
+         "Command line interface to CabalVM (Cabal for GHCVM).",
     commandUsage        = \pname ->
-         "See http://www.haskell.org/cabal/ for more information.\n"
+         "See https://github.com/rahulmutt/cabalvm/tree/1.22 for more information.\n"
       ++ "\n"
       ++ "Usage: " ++ pname ++ " [GLOBAL FLAGS] [COMMAND [FLAGS]]\n",
     commandDescription  = Just $ \pname ->
@@ -1830,7 +1830,7 @@ sandboxCommand = CommandUI {
     , headLine "init:"
     , indentParagraph $ "Initialize a sandbox in the current directory."
       ++ " An existing package database will not be modified, but settings"
-      ++ " (such as the location of the database) can be modified this way." 
+      ++ " (such as the location of the database) can be modified this way."
     , headLine "delete:"
     , indentParagraph $ "Remove the sandbox; deleting all the packages"
       ++ " installed inside."

@@ -98,6 +98,7 @@ executable cabalvm
         Distribution.Client.PackageIndex
         Distribution.Client.PackageUtils
         Distribution.Client.ParseUtils
+        Distribution.Client.Patch
         Distribution.Client.Run
         Distribution.Client.Sandbox
         Distribution.Client.Sandbox.Index

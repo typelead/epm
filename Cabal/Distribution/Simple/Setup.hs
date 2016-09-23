@@ -214,8 +214,8 @@ globalCommand commands = CommandUI
   { commandName         = ""
   , commandSynopsis     = ""
   , commandUsage        = \pname ->
-         "This Setup program uses the Haskell Cabal Infrastructure.\n"
-      ++ "See http://www.haskell.org/cabal/ for more information.\n"
+         "This Setup program uses CabalVM (Cabal for GHCVM).\n"
+      ++ "See https://github.com/rahulmutt/cabalvm/tree/1.22 for more information.\n"
       ++ "\n"
       ++ "Usage: " ++ pname ++ " [GLOBAL FLAGS] [COMMAND [FLAGS]]\n"
   , commandDescription = Just $ \pname ->

@@ -60,6 +60,7 @@ import qualified Distribution.Client.PackageIndex as PackageIndex
 import qualified Distribution.Client.Tar as Tar
 import Distribution.Client.FetchUtils
 import Distribution.Client.Utils ( tryFindPackageDesc )
+import {-# SOURCE #-} Distribution.Client.Patch ( patchedPackageCabalFile )
 
 import Distribution.PackageDescription
          ( GenericPackageDescription, FlagName(..), FlagAssignment )
@@ -513,14 +514,18 @@ readPackageTarget verbosity target = case target of
 
     extractTarballPackageCabalFile :: FilePath -> String
                                    -> IO (FilePath, BS.ByteString)
-    extractTarballPackageCabalFile tarballFile tarballOriginalLoc =
-          either (die . formatErr) return
+    extractTarballPackageCabalFile tarballFile tarballOriginalLoc = do
+      maybePatchedCabalFile <- patchedPackageCabalFile tarballFile
+      maybe
+        ( either (die . formatErr) return
         . check
         . Tar.entriesIndex
         . Tar.filterEntries isCabalFile
         . Tar.read
         . GZipUtils.maybeDecompress
-      =<< BS.readFile tarballFile
+        =<< BS.readFile tarballFile )
+        return
+        maybePatchedCabalFile
       where
         formatErr msg = "Error reading " ++ tarballOriginalLoc ++ ": " ++ msg
 

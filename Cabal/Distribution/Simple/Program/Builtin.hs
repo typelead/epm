@@ -23,6 +23,7 @@ module Distribution.Simple.Program.Builtin (
     ghcvmProgram,
     javaProgram,
     javacProgram,
+    gitProgram,
     ghcvmPkgProgram,
     lhcProgram,
     lhcPkgProgram,
@@ -115,6 +116,7 @@ builtinPrograms =
     -- GHCVM-specific tools
     , javaProgram
     , javacProgram
+    , gitProgram
     ]
 
 ghcProgram :: Program
@@ -175,14 +177,12 @@ underscoreToDot = map (\c -> if c == '_' then '.' else c)
 javaProgram :: Program
 javaProgram = (simpleProgram "java") {
     programFindVersion = findProgramVersion "-version" $ \str ->
-        let badVersion = error $ "java: bad version\n" ++ str
         -- Invoking "java -version" gives a string like
         -- "java version \"1.7.0_79\""
-        in case lines str of
-             (l:_) -> case words l of
-               (_:_:quotedVersion:_) -> underscoreToDot $ drop 1 (init quotedVersion)
-               _ -> badVersion
-             _ -> badVersion
+        case lines str of
+          (l:_)
+            | (_:_:quotedVersion:_) <- words l -> underscoreToDot $ drop 1 (init quotedVersion)
+          _ -> ""
   }
 
 javacProgram :: Program
@@ -192,7 +192,17 @@ javacProgram = (simpleProgram "javac") {
         -- "javac 1.7.0_79"
         case words str of
           (_:version:_) -> underscoreToDot version
-          _             -> error $ "javac: Bad version\n" ++ str
+          _             -> ""
+  }
+
+gitProgram :: Program
+gitProgram = (simpleProgram "git") {
+    programFindVersion = findProgramVersion "--version" $ \str ->
+        -- Invoking "git --version" gives a string like
+        --- "git version 2.7.4 (Apple Git-66)"
+        case words str of
+          (_:_:version:_) -> version
+          _               -> ""
   }
 
 -- note: version is the version number of the GHC version that ghcvm-pkg was built with

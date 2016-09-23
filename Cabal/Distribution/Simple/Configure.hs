@@ -43,7 +43,7 @@ module Distribution.Simple.Configure (configure,
                                       ConfigStateFileError(..),
                                       tryGetConfigStateFile,
                                       platformDefines,
-                                     )
+                                      ghcvmHackageUrl)
     where
 
 import Distribution.Compiler
@@ -757,6 +757,9 @@ reportProgram verbosity prog (Just configuredProg)
 
 hackageUrl :: String
 hackageUrl = "http://hackage.haskell.org/package/"
+
+ghcvmHackageUrl :: String
+ghcvmHackageUrl = "https://github.com/rahulmutt/ghcvm-hackage"
 
 data ResolvedDependency = ExternalDependency Dependency InstalledPackageInfo
                         | InternalDependency Dependency PackageId -- should be a

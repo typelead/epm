@@ -25,6 +25,7 @@ module Distribution.Client.Config (
     defaultCacheDir,
     defaultCompiler,
     defaultLogsDir,
+    defaultPatchesDir,
     defaultUserInstall,
 
     baseSavedConfig,
@@ -462,6 +463,11 @@ defaultLogsDir :: IO FilePath
 defaultLogsDir = do
   dir <- defaultCabalDir
   return $ dir </> "logs"
+
+defaultPatchesDir :: IO FilePath
+defaultPatchesDir = do
+  dir <- defaultCabalDir
+  return $ dir </> "patches"
 
 -- | Default position of the world file
 defaultWorldFile :: IO FilePath

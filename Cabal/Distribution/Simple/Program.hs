@@ -98,6 +98,7 @@ module Distribution.Simple.Program (
     , ghcvmPkgProgram
     , javaProgram
     , javacProgram
+    , gitProgram
     , lhcProgram
     , lhcPkgProgram
     , hmakeProgram

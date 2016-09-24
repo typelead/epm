@@ -44,8 +44,9 @@ patchedExtractTarGzFile verbosity dir expected tar = do
                       (orLaterVersion (Version [1,8,5] []))
                       defaultProgramConfiguration
     let runGit = runProgramInvocation verbosity . programInvocation gitProg
+    let gitDir = dir </> expected
     notice verbosity $ "Found patch in ghcvm-hackage for " ++ expected
-    runGit ["-C", dir, "init"]
-    runGit ["-C", dir, "apply", patchFileLocation]
+    runGit ["-C", gitDir, "init"]
+    runGit ["-C", gitDir, "apply", patchFileLocation]
   where packageAndVersion = takeFileName expected
         patchFile = packageAndVersion <.> "patch"

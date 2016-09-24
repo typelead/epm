@@ -80,6 +80,7 @@ import Distribution.Client.Setup
          , ConfigExFlags(..), InstallFlags(..) )
 import Distribution.Client.Config
          ( defaultCabalDir, defaultUserInstall )
+import Distribution.Client.Patch
 import Distribution.Client.Sandbox.Timestamp
          ( withUpdateTimestamps )
 import Distribution.Client.Sandbox.Types
@@ -1273,7 +1274,7 @@ installLocalTarballPackage verbosity jobLimit pkgid
       withJobLimit jobLimit $ do
         info verbosity $ "Extracting " ++ tarballPath
                       ++ " to " ++ tmpDirPath ++ "..."
-        extractTarGzFile tmpDirPath relUnpackedPath tarballPath
+        patchedExtractTarGzFile verbosity tmpDirPath relUnpackedPath tarballPath
         exists <- doesFileExist descFilePath
         when (not exists) $
           die $ "Package .cabal file not found: " ++ show descFilePath

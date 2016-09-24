@@ -34,6 +34,7 @@ import Distribution.Client.Setup
 import Distribution.Client.Types
 import Distribution.Client.Targets
 import Distribution.Client.Dependency
+import Distribution.Client.Patch
 import Distribution.Client.FetchUtils
 import qualified Distribution.Client.Tar as Tar (extractTarGzFile)
 import Distribution.Client.IndexUtils as IndexUtils
@@ -169,7 +170,7 @@ unpackPackage verbosity prefix pkgid descOverride pkgPath = do
     when existsFile $ die $
      "A file \"" ++ pkgdir ++ "\" is in the way, not unpacking."
     notice verbosity $ "Unpacking to " ++ pkgdir'
-    Tar.extractTarGzFile prefix pkgdirname pkgPath
+    patchedExtractTarGzFile verbosity prefix pkgdirname pkgPath
 
     case descOverride of
       Nothing     -> return ()

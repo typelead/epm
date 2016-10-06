@@ -394,7 +394,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                 else return []
   let classPaths = classPaths'
       generateExeScript = "#!/usr/bin/env sh\n"
-                         ++ "DIR=\"$( cd \"$( dirname \"${BASH_SOURCE[0]}\" )\" && pwd )\"\n"
+                         ++ "DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"\n"
                          ++ "java -classpath \"$DIR/" ++ exeNameReal
                          ++ (if null classPaths then "" else ':' : intercalate ":" classPaths)
                          ++ "\" ghcvm.main\n"

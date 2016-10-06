@@ -47,6 +47,8 @@ patchedExtractTarGzFile verbosity dir expected tar = do
     let gitDir = dir </> expected
     notice verbosity $ "Found patch in ghcvm-hackage for " ++ expected
     runGit ["-C", gitDir, "init"]
-    runGit ["-C", gitDir, "apply", patchFileLocation]
+    runGit ["-C", gitDir, "apply",
+            "--ignore-space-change", "--ignore-whitespace"
+           , patchFileLocation]
   where packageAndVersion = takeFileName expected
         patchFile = packageAndVersion <.> "patch"

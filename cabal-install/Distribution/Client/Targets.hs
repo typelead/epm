@@ -60,7 +60,7 @@ import qualified Distribution.Client.PackageIndex as PackageIndex
 import qualified Distribution.Client.Tar as Tar
 import Distribution.Client.FetchUtils
 import Distribution.Client.Utils ( tryFindPackageDesc )
-import {-# SOURCE #-} Distribution.Client.Patch ( patchedPackageCabalFile )
+import {-# SOURCE #-} Distribution.Client.Patch ( patchedTarPackageCabalFile )
 
 import Distribution.PackageDescription
          ( GenericPackageDescription, FlagName(..), FlagAssignment )
@@ -515,7 +515,7 @@ readPackageTarget verbosity target = case target of
     extractTarballPackageCabalFile :: FilePath -> String
                                    -> IO (FilePath, BS.ByteString)
     extractTarballPackageCabalFile tarballFile tarballOriginalLoc = do
-      maybePatchedCabalFile <- patchedPackageCabalFile tarballFile
+      maybePatchedCabalFile <- patchedTarPackageCabalFile tarballFile
       maybe
         ( either (die . formatErr) return
         . check

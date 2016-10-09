@@ -1,8 +1,11 @@
 module Distribution.Client.Patch
-  ( patchedPackageCabalFile
-  , patchedExtractTarGzFile )
+  ( patchedTarPackageCabalFile
+  , patchedExtractTarGzFile
+  , patchedPackageCabalFile
+  )
 where
 
+import Distribution.Package        ( PackageKey(..), PackageIdentifier(..), PackageName(..))
 import Distribution.Simple.Program ( gitProgram, defaultProgramConfiguration
                                    , runProgramInvocation, programInvocation
                                    , requireProgramVersion )
@@ -13,23 +16,40 @@ import Distribution.Verbosity      ( Verbosity )
 import Distribution.Client.Tar     ( extractTarGzFile )
 import Distribution.Client.Config  ( defaultPatchesDir )
 
+import Data.Version                ( Version(..) )
+import Data.List                   ( intercalate )
 import Control.Monad               ( when )
 import System.FilePath             ( FilePath, dropExtension, (</>), (<.>), takeFileName )
 import System.Directory            ( doesFileExist )
 
 import qualified Data.ByteString.Lazy as BS
 
-patchedPackageCabalFile :: FilePath -> IO (Maybe (FilePath, BS.ByteString))
-patchedPackageCabalFile tarFilePath = do
+patchedPackageCabalFile :: PackageKey -> IO (Maybe BS.ByteString)
+patchedPackageCabalFile
+  (OldPackageKey
+   (PackageIdentifier
+    { pkgName = name
+    , pkgVersion = Version { versionBranch = versions } }))
+  = findCabalFilePatch $ unPackageName name
+                      ++ "-"
+                      ++ (intercalate "." $ map show versions)
+                      <.> "cabal"
+
+patchedTarPackageCabalFile :: FilePath -> IO (Maybe (FilePath, BS.ByteString))
+patchedTarPackageCabalFile tarFilePath =
+  fmap (fmap (\bs -> (cabalFile, bs))) $ findCabalFilePatch cabalFile
+  where packageAndVersion = dropExtension . dropExtension $ tarFilePath
+        cabalFile = packageAndVersion <.> "cabal"
+
+findCabalFilePatch :: FilePath -> IO (Maybe BS.ByteString)
+findCabalFilePatch cabalFile = do
   patchesDir <- defaultPatchesDir
   -- TODO: Speed this up with a cache?
   let cabalPatchLocation = patchesDir </> "patches" </> cabalFile
   exists <- doesFileExist cabalPatchLocation
   if exists
-  then BS.readFile cabalPatchLocation >>= (\bs -> return $ Just (cabalFile, bs))
+  then fmap Just $ BS.readFile cabalPatchLocation
   else return Nothing
-  where packageAndVersion = dropExtension . dropExtension $ tarFilePath
-        cabalFile = packageAndVersion <.> "cabal"
 
 patchedExtractTarGzFile :: Verbosity -> FilePath -> FilePath -> FilePath -> IO ()
 patchedExtractTarGzFile verbosity dir expected tar = do

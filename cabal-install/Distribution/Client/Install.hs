@@ -1336,18 +1336,12 @@ installUnpackedPackage verbosity buildLimit installLock numJobs pkg_key
   -- Override the .cabal file if necessary
   case pkgoverride of
     Nothing     -> return ()
-    Just pkgtxt' -> do
+    Just pkgtxt -> do
       let descFilePath = fromMaybe "." workingDir
                      </> display (packageName pkgid) <.> "cabal"
       info verbosity $
         "Updating " ++ display (packageName pkgid) <.> "cabal"
                     ++ " with the latest revision from the index."
-      mPkgTxt <- patchedPackageCabalFile pkg_key
-      pkgtxt <- case mPkgTxt of
-            Just pkgtxtNew -> do
-              info verbosity $ "Found patch in ghcvm-hacakge for cabal file."
-              return pkgtxtNew
-            Nothing -> return pkgtxt'
       writeFileAtomic descFilePath pkgtxt
 
   -- Make sure that we pass --libsubdir etc to 'setup configure' (necessary if

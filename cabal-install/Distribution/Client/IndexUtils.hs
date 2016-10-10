@@ -34,6 +34,7 @@ import Distribution.Package
          ( PackageId, PackageIdentifier(..), PackageName(..)
          , Package(..), packageVersion, packageName
          , Dependency(Dependency), InstalledPackageId(..) )
+import Distribution.Client.Patch (patchedPackageCabalFile)
 import Distribution.Client.PackageIndex (PackageIndex)
 import qualified Distribution.Client.PackageIndex      as PackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
@@ -449,7 +450,8 @@ packageIndexFromCache mkPkg hnd entrs mode = accum mempty [] entrs
       -- from the index tarball if it turns out that we need it.
       -- Most of the time we only need the package id.
       ~(pkg, pkgtxt) <- unsafeInterleaveIO $ do
-        pkgtxt <- getEntryContent blockno
+        mPatch <- patchedPackageCabalFile pkgid
+        pkgtxt <- maybe (getEntryContent blockno) return mPatch
         pkg    <- readPackageDescription pkgtxt
         return (pkg, pkgtxt)
       let srcpkg = case mode of

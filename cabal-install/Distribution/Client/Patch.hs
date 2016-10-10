@@ -5,7 +5,7 @@ module Distribution.Client.Patch
   )
 where
 
-import Distribution.Package        ( PackageKey(..), PackageIdentifier(..), PackageName(..))
+import Distribution.Package        ( PackageIdentifier(..), PackageName(..))
 import Distribution.Simple.Program ( gitProgram, defaultProgramConfiguration
                                    , runProgramInvocation, programInvocation
                                    , requireProgramVersion )
@@ -24,12 +24,11 @@ import System.Directory            ( doesFileExist )
 
 import qualified Data.ByteString.Lazy as BS
 
-patchedPackageCabalFile :: PackageKey -> IO (Maybe BS.ByteString)
+patchedPackageCabalFile :: PackageIdentifier -> IO (Maybe BS.ByteString)
 patchedPackageCabalFile
-  (OldPackageKey
-   (PackageIdentifier
+  (PackageIdentifier
     { pkgName = name
-    , pkgVersion = Version { versionBranch = versions } }))
+    , pkgVersion = Version { versionBranch = versions } })
   = findCabalFilePatch $ unPackageName name
                       ++ "-"
                       ++ (intercalate "." $ map show versions)

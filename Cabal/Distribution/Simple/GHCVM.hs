@@ -393,7 +393,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                      (map fst $ componentPackageDeps clbi)
                 else return []
   let classPaths = classPaths'
-      generateExeScript = "#!/usr/bin/env sh\n"
+      generateExeScript = "#!/usr/bin/env bash\n"
                          ++ "DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"\n"
                          ++ "java -classpath \"$DIR/" ++ exeNameReal
                          ++ (if null classPaths then "" else ':' : intercalate ":" classPaths)

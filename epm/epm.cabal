@@ -122,7 +122,7 @@ executable epm
         Distribution.Client.Compat.Process
         Distribution.Client.Compat.Semaphore
         Distribution.Client.Compat.Time
-        Paths_cabal_install
+        Paths_epm
 
     -- NOTE: when updating build-depends, don't forget to update version regexps
     -- in bootstrap.sh.

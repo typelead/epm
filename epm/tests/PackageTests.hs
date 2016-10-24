@@ -1,8 +1,8 @@
--- | Groups black-box tests of cabal-install and configures them to test
+-- | Groups black-box tests of epm and configures them to test
 -- the correct binary.
 --
 -- This file should do nothing but import tests from other modules and run
--- them with the path to the correct cabal-install binary.
+-- them with the path to the correct epm binary.
 module Main
        where
 

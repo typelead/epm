@@ -107,7 +107,7 @@ import Distribution.Simple.Utils (lowercase, comparing, equating)
 -- Note [FakeMap]
 -----------------
 -- We'd like to use the PackageIndex defined in this module for
--- cabal-install's InstallPlan.  However, at the moment, this
+-- epm's InstallPlan.  However, at the moment, this
 -- data structure is indexed by InstalledPackageId, which we don't
 -- know until after we've compiled a package (whereas InstallPlan
 -- needs to store not-compiled packages in the index.) Eventually,

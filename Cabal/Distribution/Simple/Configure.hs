@@ -982,7 +982,7 @@ configureInstantiateWith pkg_descr cfg installedPackageSet = do
         -- NB: We union together /all/ of the requirements when calculating
         -- the package key.
         -- NB: For now, we assume that dependencies don't contribute signatures.
-        -- This will be handled by cabal-install; as far as ./Setup is
+        -- This will be handled by epm; as far as ./Setup is
         -- concerned, the most important thing is to be provided correctly
         -- built dependencies.
         let signatures =

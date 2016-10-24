@@ -80,7 +80,7 @@ convIPId pn' idx ipid =
                     pn = pkgName (sourcePackageId ipi)
                 in  Just (D.Simple (Dep pn (Fixed i (Goal (P pn') []))))
 
--- | Convert a cabal-install source package index to the simpler,
+-- | Convert a epm source package index to the simpler,
 -- more uniform index format of the solver.
 convSPI' :: OS -> Arch -> CompilerInfo -> Bool ->
             CI.PackageIndex SourcePackage -> [(PN, I, PInfo)]

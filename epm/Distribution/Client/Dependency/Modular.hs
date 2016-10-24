@@ -1,7 +1,7 @@
 module Distribution.Client.Dependency.Modular
          ( modularResolver, SolverConfig(..)) where
 
--- Here, we try to map between the external cabal-install solver
+-- Here, we try to map between the external epm solver
 -- interface and the internal interface that the solver actually
 -- expects. There are a number of type conversions to perform: we
 -- have to convert the package indices to the uniform index used
@@ -32,7 +32,7 @@ import Distribution.Client.InstallPlan
 import Distribution.System
          ( Platform(..) )
 
--- | Ties the two worlds together: classic cabal-install vs. the modular
+-- | Ties the two worlds together: classic epm vs. the modular
 -- solver. Performs the necessary translations before and after.
 modularResolver :: SolverConfig -> DependencyResolver
 modularResolver sc (Platform arch os) cinfo iidx sidx pprefs pcs pns =

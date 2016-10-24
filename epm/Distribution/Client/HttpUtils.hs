@@ -26,7 +26,7 @@ import Control.Monad
 import qualified Data.ByteString.Lazy.Char8 as ByteString
 import Data.ByteString.Lazy (ByteString)
 
-import qualified Paths_cabal_install (version)
+import qualified Paths_epm (version)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils
          ( die, info, warn, debug, notice
@@ -69,7 +69,7 @@ mkRequest uri etag = Request{ rqURI     = uri
                             , rqMethod  = GET
                             , rqHeaders = Header HdrUserAgent userAgent : ifNoneMatchHdr
                             , rqBody    = ByteString.empty }
-  where userAgent = concat [ "cabal-install/", display Paths_cabal_install.version
+  where userAgent = concat [ "epm/", display Paths_epm.version
                            , " (", display buildOS, "; ", display buildArch, ")"
                            ]
         ifNoneMatchHdr = maybe [] (\t -> [Header HdrIfNoneMatch t]) etag

@@ -117,7 +117,7 @@ import Distribution.Compat.Environment
          ( getEnvironment )
 import Distribution.Compat.Exception
          ( catchIO )
-import qualified Paths_cabal_install
+import qualified Paths_epm
          ( version )
 import Data.Version
          ( showVersion )
@@ -564,7 +564,7 @@ writeConfigFile file comments vals = do
       ,"-- used to indicate layout for nested sections."
       ,""
       ,"-- Cabal library version: " ++ showVersion cabalVersion
-      ,"-- cabal-install version: " ++ showVersion Paths_cabal_install.version
+      ,"-- epm version: " ++ showVersion Paths_epm.version
       ,"",""
       ]
 

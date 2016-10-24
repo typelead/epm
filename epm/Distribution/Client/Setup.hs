@@ -2066,7 +2066,7 @@ optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg _getig _setig getsip
       getsip setsip
       (yesNoOpt showOrParseArgs)
   , option [] ["strong-flags"]
-      "Do not defer flag choices (this used to be the default in cabal-install <= 1.20)."
+      "Do not defer flag choices (this used to be the default in epm <= 1.20)."
       getstrfl setstrfl
       (yesNoOpt showOrParseArgs)
   ]

@@ -4,9 +4,9 @@ The Cabal library package
 See the [Cabal web site] for more information.
 
 If you also want the `cabal` command-line program, you need the
-[cabal-install] package in addition to this library.
+[epm] package in addition to this library.
 
-[cabal-install]: ../cabal-install/README.md
+[epm]: ../epm/README.md
 
 Installing the Cabal library
 ============================

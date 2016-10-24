@@ -138,7 +138,7 @@ convert index' = PackageIndex.fromList
 -- All the 'SourcePackage's are marked as having come from the appropriate
 -- 'Repo'.
 --
--- This is a higher level wrapper used internally in cabal-install.
+-- This is a higher level wrapper used internally in epm.
 --
 getSourcePackages :: Verbosity -> [Repo] -> IO SourcePackageDb
 getSourcePackages verbosity repos = getSourcePackages' verbosity repos
@@ -179,7 +179,7 @@ getSourcePackages' verbosity repos mode = do
 --
 -- All the 'SourcePackage's are marked as having come from the given 'Repo'.
 --
--- This is a higher level wrapper used internally in cabal-install.
+-- This is a higher level wrapper used internally in epm.
 --
 readRepoIndex :: Verbosity -> Repo -> ReadPackageIndexMode
               -> IO (PackageIndex SourcePackage, [Dependency])

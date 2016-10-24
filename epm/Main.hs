@@ -10,7 +10,7 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- Entry point to the default cabal-install front-end.
+-- Entry point to the default epm front-end.
 -----------------------------------------------------------------------------
 
 module Main (main) where
@@ -141,7 +141,7 @@ import Distribution.Verbosity as Verbosity
          ( Verbosity, normal )
 import Distribution.Version
          ( Version(..), orLaterVersion )
-import qualified Paths_cabal_install (version)
+import qualified Paths_epm (version)
 
 import System.Environment       (getArgs, getProgName)
 import System.Exit              (exitFailure)
@@ -210,9 +210,9 @@ mainWorker args = topHandler $
                   ++ "defaults if you run 'cabal update'."
     printOptionsList = putStr . unlines
     printErrors errs = die $ intercalate "\n" errs
-    printNumericVersion = putStrLn $ display Paths_cabal_install.version
-    printVersion        = putStrLn $ "cabal-install version "
-                                  ++ display Paths_cabal_install.version
+    printNumericVersion = putStrLn $ display Paths_epm.version
+    printVersion        = putStrLn $ "epm version "
+                                  ++ display Paths_epm.version
                                   ++ "\nusing version "
                                   ++ display cabalVersion
                                   ++ " of the Cabal library "

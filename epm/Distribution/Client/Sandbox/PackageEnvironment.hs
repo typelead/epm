@@ -223,7 +223,7 @@ sandboxPackageDBPath sandboxDir compiler platform =
              ++ showCompilerIdWithAbi compiler
              ++ "-packages.conf.d")
 -- The path in sandboxPackageDBPath should be kept in sync with the
--- path in the bootstrap.sh which is used to bootstrap cabal-install
+-- path in the bootstrap.sh which is used to bootstrap epm
 -- into a sandbox.
 
 -- | Use the package DB location specific for this compiler.

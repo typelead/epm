@@ -10,7 +10,7 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- Various common data types for the entire cabal-install system
+-- Various common data types for the entire epm system
 -----------------------------------------------------------------------------
 module Distribution.Client.Types where
 

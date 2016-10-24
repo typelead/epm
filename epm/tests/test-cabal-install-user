@@ -1,8 +1,8 @@
 #!/bin/sh
 
 darcs get --partial http://darcs.haskell.org/packages/Cabal/ && \
-cd Cabal/cabal-install && \
+cd Cabal/epm && \
 make install-user && \
-cabal-install update && \
-cabal-install install --prefix=/tmp --user hnop && \
+epm update && \
+epm install --prefix=/tmp --user hnop && \
 ls -l /tmp/bin/hnop

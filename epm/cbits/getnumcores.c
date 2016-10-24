@@ -1,6 +1,6 @@
 #if defined(__GLASGOW_HASKELL__) && (__GLASGOW_HASKELL__ >= 612) && !defined(CABAL_NO_THREADED)
 /* Since version 6.12, GHC's threaded RTS includes a getNumberOfProcessors
-   function, so we try to use that if available. cabal-install is always built
+   function, so we try to use that if available. epm is always built
    with -threaded nowadays.  */
 #define HAS_GET_NUMBER_OF_PROCESSORS
 #endif

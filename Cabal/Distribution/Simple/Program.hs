@@ -94,8 +94,8 @@ module Distribution.Simple.Program (
     , ghcPkgProgram
     , ghcjsProgram
     , ghcjsPkgProgram
-    , ghcvmProgram
-    , ghcvmPkgProgram
+    , etaProgram
+    , etaPkgProgram
     , javaProgram
     , javacProgram
     , gitProgram

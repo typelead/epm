@@ -145,9 +145,9 @@ globalCommand :: [Command action] -> CommandUI GlobalFlags
 globalCommand commands = CommandUI {
     commandName         = "",
     commandSynopsis     =
-         "Command line interface to CabalVM (Cabal for GHCVM).",
+         "Command line interface to Epm (Cabal for ETA).",
     commandUsage        = \pname ->
-         "See https://github.com/rahulmutt/cabalvm/tree/1.22 for more information.\n"
+         "See https://github.com/typelead/epm/tree/1.22 for more information.\n"
       ++ "\n"
       ++ "Usage: " ++ pname ++ " [GLOBAL FLAGS] [COMMAND [FLAGS]]\n",
     commandDescription  = Just $ \pname ->

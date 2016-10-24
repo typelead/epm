@@ -45,7 +45,7 @@ import Distribution.Simple.BuildPaths (haddockName)
 
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
-import qualified Distribution.Simple.GHCVM as GHCVM
+import qualified Distribution.Simple.ETA as ETA
 import qualified Distribution.Simple.LHC   as LHC
 import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
@@ -178,8 +178,8 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref packa
      GHCJS -> do
             s <- GHCJS.libAbiHash verbosity pkg lbi lib clbi
             return (InstalledPackageId (display (packageId pkg) ++ '-':s))
-     GHCVM -> do
-            s <- GHCVM.libAbiHash verbosity pkg lbi lib clbi
+     ETA -> do
+            s <- ETA.libAbiHash verbosity pkg lbi lib clbi
             return (InstalledPackageId (display (packageId pkg) ++ '-':s))
      _other -> do
             return (InstalledPackageId (display (packageId pkg)))
@@ -237,7 +237,7 @@ withHcPkg name comp conf f =
   case compilerFlavor comp of
     GHC   -> f (GHC.hcPkgInfo conf)
     GHCJS -> f (GHCJS.hcPkgInfo conf)
-    GHCVM -> f (GHCVM.hcPkgInfo conf)
+    ETA -> f (ETA.hcPkgInfo conf)
     LHC   -> f (LHC.hcPkgInfo conf)
     _     -> die ("Distribution.Simple.Register." ++ name ++ ":\
                   \not implemented for this compiler")
@@ -257,7 +257,7 @@ registerPackage verbosity installedPkgInfo pkg lbi inplace packageDbs = do
   case compilerFlavor (compiler lbi) of
     GHC   -> GHC.registerPackage   verbosity installedPkgInfo pkg lbi inplace packageDbs
     GHCJS -> GHCJS.registerPackage verbosity installedPkgInfo pkg lbi inplace packageDbs
-    GHCVM -> GHCVM.registerPackage verbosity installedPkgInfo pkg lbi inplace packageDbs
+    ETA -> ETA.registerPackage verbosity installedPkgInfo pkg lbi inplace packageDbs
     LHC   -> LHC.registerPackage   verbosity installedPkgInfo pkg lbi inplace packageDbs
     UHC   -> UHC.registerPackage   verbosity installedPkgInfo pkg lbi inplace packageDbs
     JHC   -> notice verbosity "Registering for jhc (nothing to do)"
@@ -356,7 +356,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg ipid lib lbi clbi installDirs =
                             || (not (null (jsSources bi)) &&
                                 compilerFlavor (compiler lbi) == GHCJS)
                             || (not (null (javaSources bi)) &&
-                                compilerFlavor (compiler lbi) == GHCVM)
+                                compilerFlavor (compiler lbi) == ETA)
 
     -- Since we currently don't decide the InstalledPackageId of our package
     -- until just before we register, we didn't have one for the re-exports

@@ -447,7 +447,7 @@ initialSavedConfig = do
 --TODO: misleading, there's no way to override this default
 --      either make it possible or rename to simply getCabalDir.
 defaultCabalDir :: IO FilePath
-defaultCabalDir = getAppUserDataDirectory "cabalvm"
+defaultCabalDir = getAppUserDataDirectory "epm"
 
 defaultConfigFile :: IO FilePath
 defaultConfigFile = do
@@ -481,7 +481,7 @@ defaultExtraPath = do
   return [dir </> "bin"]
 
 defaultCompiler :: CompilerFlavor
-defaultCompiler = fromMaybe GHCVM defaultCompilerFlavor
+defaultCompiler = fromMaybe ETA defaultCompilerFlavor
 
 defaultUserInstall :: Bool
 defaultUserInstall = True

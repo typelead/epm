@@ -20,11 +20,11 @@ module Distribution.Simple.Program.Builtin (
     ghcPkgProgram,
     ghcjsProgram,
     ghcjsPkgProgram,
-    ghcvmProgram,
+    etaProgram,
     javaProgram,
     javacProgram,
     gitProgram,
-    ghcvmPkgProgram,
+    etaPkgProgram,
     lhcProgram,
     lhcPkgProgram,
     hmakeProgram,
@@ -86,8 +86,8 @@ builtinPrograms =
     , ghcPkgProgram
     , ghcjsProgram
     , ghcjsPkgProgram
-    , ghcvmProgram
-    , ghcvmPkgProgram
+    , etaProgram
+    , etaPkgProgram
     , haskellSuiteProgram
     , haskellSuitePkgProgram
     , hmakeProgram
@@ -113,7 +113,7 @@ builtinPrograms =
     , tarProgram
     -- configuration tools
     , pkgConfigProgram
-    -- GHCVM-specific tools
+    -- ETA-specific tools
     , javaProgram
     , javacProgram
     , gitProgram
@@ -166,8 +166,8 @@ ghcjsPkgProgram = (simpleProgram "ghcjs-pkg") {
         _               -> ""
   }
 
-ghcvmProgram :: Program
-ghcvmProgram = (simpleProgram "ghcvm") {
+etaProgram :: Program
+etaProgram = (simpleProgram "eta") {
     programFindVersion = findProgramVersion "--numeric-version" id
   }
 
@@ -205,12 +205,12 @@ gitProgram = (simpleProgram "git") {
           _               -> ""
   }
 
--- note: version is the version number of the GHC version that ghcvm-pkg was built with
-ghcvmPkgProgram :: Program
-ghcvmPkgProgram = (simpleProgram "ghcvm-pkg") {
+-- note: version is the version number of the GHC version that eta-pkg was built with
+etaPkgProgram :: Program
+etaPkgProgram = (simpleProgram "eta-pkg") {
     programFindVersion = findProgramVersion "--version" $ \str ->
-      -- Invoking "ghcvm-pkg --version" gives a string like
-      -- "GHCVM package manager version 0.0.1"
+      -- Invoking "eta-pkg --version" gives a string like
+      -- "ETA package manager version 0.0.1"
       case words str of
         (_:_:_:_:ver:_) -> ver
         _               -> ""

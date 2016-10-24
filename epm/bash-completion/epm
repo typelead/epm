@@ -1,50 +1,50 @@
-# cabal command line completion
+# epm command line completion
 # Copyright 2007-2008 "Lennart Kolmodin" <kolmodin@gentoo.org>
 #                     "Duncan Coutts"     <dcoutts@gentoo.org>
 #
 
-# List cabal targets by type, pass:
+# List epm targets by type, pass:
 #   - test-suite for test suites
 #   - benchmark for benchmarks
 #   - executable for executables
 #   - executable|test-suite|benchmark for the three
-_cabal_list()
+_epm_list()
 {
-	cat *.cabal |
+	cat *.epm |
 	grep -Ei "^[[:space:]]*($1)[[:space:]]" |
 	sed -e "s/.* \([^ ]*\).*/\1/"
 }
 
 # List possible targets depending on the command supplied as parameter.  The
-# ideal option would be to implement this via --list-options on cabal directly.
+# ideal option would be to implement this via --list-options on epm directly.
 # This is a temporary workaround.
-_cabal_targets()
+_epm_targets()
 {
 	# If command ($*) contains build, repl, test or bench completes with
 	# targets of according type.
-	[ -f *.cabal ] || return 0
+	[ -f *.epm ] || return 0
 	local comp
 	for comp in $*; do
-		[ $comp == build ] && _cabal_list "executable|test-suite|benchmark" && break
-		[ $comp == repl  ] && _cabal_list "executable|test-suite|benchmark" && break
-		[ $comp == run   ] && _cabal_list "executable"                      && break
-		[ $comp == test  ] && _cabal_list            "test-suite"           && break
-		[ $comp == bench ] && _cabal_list                       "benchmark" && break
+		[ $comp == build ] && _epm_list "executable|test-suite|benchmark" && break
+		[ $comp == repl  ] && _epm_list "executable|test-suite|benchmark" && break
+		[ $comp == run   ] && _epm_list "executable"                      && break
+		[ $comp == test  ] && _epm_list            "test-suite"           && break
+		[ $comp == bench ] && _epm_list                       "benchmark" && break
 	done
 }
 
-# List possible subcommands of a cabal subcommand.
+# List possible subcommands of a epm subcommand.
 #
-# In example "sandbox" is a cabal subcommand that itself has subcommands. Since
-# "cabal --list-options" doesn't work in such cases we have to get the list
+# In example "sandbox" is a epm subcommand that itself has subcommands. Since
+# "epm --list-options" doesn't work in such cases we have to get the list
 # using other means.
-_cabal_subcommands()
+_epm_subcommands()
 {
     local word
     for word in "$@"; do
         case "$word" in
           sandbox)
-            # Get list of "cabal sandbox" subcommands from its help message.
+            # Get list of "epm sandbox" subcommands from its help message.
             #
             # Following command short-circuits if it reaches flags section.
             # This is to prevent any problems that might arise from unfortunate
@@ -52,14 +52,14 @@ _cabal_subcommands()
             # using simple regexp and "sandbox" subcommand is printed for each
             # successful substitution.
             "$1" help sandbox |
-            sed -rn '/Flags/q;s/^.* cabal sandbox  *([^ ]*).*/\1/;t p;b;: p;p'
+            sed -rn '/Flags/q;s/^.* epm sandbox  *([^ ]*).*/\1/;t p;b;: p;p'
             break  # Terminate for loop.
             ;;
         esac
     done
 }
 
-_cabal()
+_epm()
 {
     # get the word currently being completed
     local cur
@@ -74,7 +74,7 @@ _cabal()
     cmd[${COMP_CWORD}]="--list-options"
 
     # the resulting completions should be put into this array
-    COMPREPLY=( $( compgen -W "$( ${cmd[@]} ) $( _cabal_targets ${cmd[@]} ) $( _cabal_subcommands ${COMP_WORDS[@]} )" -- $cur ) )
+    COMPREPLY=( $( compgen -W "$( ${cmd[@]} ) $( _epm_targets ${cmd[@]} ) $( _epm_subcommands ${COMP_WORDS[@]} )" -- $cur ) )
 }
 
-complete -F _cabal -o default cabal
+complete -F _epm -o default epm

@@ -64,7 +64,7 @@ patchedExtractTarGzFile verbosity dir expected tar = do
                       defaultProgramConfiguration
     let runGit = runProgramInvocation verbosity . programInvocation gitProg
     let gitDir = dir </> expected
-    notice verbosity $ "Found patch in ghcvm-hackage for " ++ expected
+    notice verbosity $ "Found patch in eta-hackage for " ++ expected
     runGit ["-C", gitDir, "init"]
     runGit ["-C", gitDir, "apply",
             "--ignore-space-change", "--ignore-whitespace"

@@ -28,7 +28,7 @@ import Distribution.Client.Config
          ( defaultPatchesDir )
 
 import Distribution.Simple.Configure
-         ( ghcvmHackageUrl )
+         ( etaHackageUrl )
 import Distribution.Simple.Program
          ( gitProgram, defaultProgramConfiguration, runProgramInvocation, programInvocation,
            requireProgramVersion )
@@ -72,7 +72,7 @@ updateRepo verbosity repo = case repoKind repo of
 -- See  http://stackoverflow.com/questions/5083224/git-pull-while-not-in-a-git-directory
 updatePatchRepo :: Verbosity -> IO ()
 updatePatchRepo verbosity = do
-  notice verbosity $ "Updating the ghcvm-hackage patch set"
+  notice verbosity $ "Updating the eta-hackage patch set"
   (gitProg, _, _) <- requireProgramVersion verbosity
                      gitProgram
                      (orLaterVersion (Version [1,8,5] []))
@@ -82,4 +82,4 @@ updatePatchRepo verbosity = do
   exists <- doesDirectoryExist patchesDir
   if exists
   then runGit ["-C", patchesDir, "pull"]
-  else runGit ["clone", "--depth=1", ghcvmHackageUrl, patchesDir]
+  else runGit ["clone", "--depth=1", etaHackageUrl, patchesDir]

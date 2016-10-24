@@ -11,7 +11,7 @@
 
 module Distribution.Simple.GHC.ImplInfo (
         GhcImplInfo(..), getImplInfo,
-        ghcVersionImplInfo, ghcjsVersionImplInfo, ghcvmVersionImplInfo, lhcVersionImplInfo
+        ghcVersionImplInfo, ghcjsVersionImplInfo, etaVersionImplInfo, lhcVersionImplInfo
         ) where
 
 import Distribution.Simple.Compiler
@@ -60,10 +60,10 @@ getImplInfo comp =
               Just ghcVer -> ghcjsVersionImplInfo (compilerVersion comp) ghcVer
               _  -> error ("Distribution.Simple.GHC.Props.getImplProps: " ++
                            "could not find GHC version for GHCJS compiler")
-    GHCVM -> case compilerCompatVersion GHC comp of
-              Just ghcVer -> ghcvmVersionImplInfo (compilerVersion comp) ghcVer
+    ETA -> case compilerCompatVersion GHC comp of
+              Just ghcVer -> etaVersionImplInfo (compilerVersion comp) ghcVer
               _  -> error ("Distribution.Simple.GHC.Props.getImplProps: " ++
-                           "could not find GHC version for GHCVM compiler")
+                           "could not find GHC version for ETA compiler")
     x     -> error ("Distribution.Simple.GHC.Props.getImplProps only works" ++
                     "for GHC-like compilers (GHC, GHCJS, LHC)" ++
                     ", but found " ++ show x)
@@ -108,8 +108,8 @@ ghcjsVersionImplInfo _ghcjsVer _ghcVer = GhcImplInfo
   , flagDebugInfo        = False
   }
 
-ghcvmVersionImplInfo :: Version -> Version -> GhcImplInfo
-ghcvmVersionImplInfo _ghcvmVer _ghcVer = GhcImplInfo
+etaVersionImplInfo :: Version -> Version -> GhcImplInfo
+etaVersionImplInfo _etaVer _ghcVer = GhcImplInfo
   { hasCcOdirBug         = False
   , flagInfoLanguages    = True
   , fakeRecordPuns       = False
@@ -123,7 +123,7 @@ ghcvmVersionImplInfo _ghcvmVer _ghcVer = GhcImplInfo
   , supportsHaskell2010  = True
   , reportsNoExt         = True
   , alwaysNondecIndent   = False
-  , flagGhciScript       = False -- TODO: Enable after GHCVMi
+  , flagGhciScript       = False -- TODO: Enable after ETAi
   , flagPackageConf      = False
   , flagDebugInfo        = False
   }

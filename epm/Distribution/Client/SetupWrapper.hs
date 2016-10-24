@@ -209,7 +209,7 @@ setupWrapper verbosity options mpkg cmd flags extraArgs = do
 --
 determineSetupMethod :: SetupScriptOptions -> BuildType -> SetupMethod
 determineSetupMethod options buildType' = internalSetupMethod
-  -- TODO: For now, internalSetupMethod. After Cabal can be compiled with GHCVM,
+  -- TODO: For now, internalSetupMethod. After Cabal can be compiled with ETA,
   --       allow for external scripts.
   -- case () of
   --   _ | forceExternalSetupMethod options -> externalSetupMethod

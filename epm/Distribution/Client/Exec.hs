@@ -14,7 +14,7 @@ module Distribution.Client.Exec ( exec
 
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
-import qualified Distribution.Simple.GHCVM as GHCVM
+import qualified Distribution.Simple.ETA as ETA
 
 import Distribution.Client.Sandbox (getSandboxConfigFilePath)
 import Distribution.Client.Sandbox.PackageEnvironment (sandboxPackageDBPath)
@@ -81,7 +81,7 @@ sandboxEnvironment verbosity sandboxDir comp platform programDb =
     case compilerFlavor comp of
       GHC   -> env GHC.getGlobalPackageDB   ghcProgram   "GHC_PACKAGE_PATH"
       GHCJS -> env GHCJS.getGlobalPackageDB ghcjsProgram "GHCJS_PACKAGE_PATH"
-      GHCVM -> env GHCJS.getGlobalPackageDB ghcjsProgram "GHCVM_PACKAGE_PATH"
+      ETA -> env GHCJS.getGlobalPackageDB ghcjsProgram "ETA_PACKAGE_PATH"
       _     -> die "exec only works with GHC and GHCJS"
   where
     env getGlobalPackageDB hcProgram packagePathEnvVar = do

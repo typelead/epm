@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP #-}
 
-module Distribution.Simple.GHCVM (
+module Distribution.Simple.ETA (
         configure, getInstalledPackages, getPackageDBContents,
         buildLib, buildExe,
         replLib, replExe,
@@ -15,7 +15,7 @@ module Distribution.Simple.GHCVM (
         getGlobalPackageDB
   ) where
 
-import Distribution.Simple.GHC.ImplInfo ( getImplInfo, ghcvmVersionImplInfo )
+import Distribution.Simple.GHC.ImplInfo ( getImplInfo, etaVersionImplInfo )
 import qualified Distribution.Simple.GHC.Internal as Internal
 import Distribution.Package ( InstalledPackageId )
 import Distribution.PackageDescription as PD
@@ -47,7 +47,7 @@ import Distribution.Simple.Program
          , userMaybeSpecifyPath, programPath
          , locationPath
          , lookupProgram, addKnownPrograms
-         , ghcvmProgram, ghcvmPkgProgram, c2hsProgram, hsc2hsProgram
+         , etaProgram, etaPkgProgram, c2hsProgram, hsc2hsProgram
          , ldProgram, haddockProgram, stripProgram
          , javaProgram, javacProgram )
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
@@ -91,107 +91,107 @@ configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
           -> ProgramConfiguration
           -> IO (Compiler, Maybe Platform, ProgramConfiguration)
 configure verbosity hcPath hcPkgPath conf0 = do
-  (ghcvmProg, ghcvmVersion, conf1) <-
-    requireProgramVersion verbosity ghcvmProgram
+  (etaProg, etaVersion, conf1) <-
+    requireProgramVersion verbosity etaProgram
       anyVersion --(orLaterVersion (Version [0,1] []))
-      (userMaybeSpecifyPath "ghcvm" hcPath conf0)
+      (userMaybeSpecifyPath "eta" hcPath conf0)
 
-  let implInfo = ghcvmVersionImplInfo ghcvmVersion ghcvmGhcVersion
+  let implInfo = etaVersionImplInfo etaVersion etaGhcVersion
 
-  -- This is slightly tricky, we have to configure ghcvm first, then we use the
-  -- location of ghcvm to help find ghcvm-pkg in the case that the user did not
+  -- This is slightly tricky, we have to configure eta first, then we use the
+  -- location of eta to help find eta-pkg in the case that the user did not
   -- specify the location of ghc-pkg directly:
-  (ghcvmPkgProg, ghcvmPkgVersion, conf2) <-
-    requireProgramVersion verbosity ghcvmPkgProgram
-    {- TODO: Is this necessary? {programFindLocation = guessGhcvmPkgFromGhcvmPath ghcvmProg} -}
-    anyVersion (userMaybeSpecifyPath "ghcvm-pkg" hcPkgPath conf1)
+  (etaPkgProg, etaPkgVersion, conf2) <-
+    requireProgramVersion verbosity etaPkgProgram
+    {- TODO: Is this necessary? {programFindLocation = guessEtaPkgFromEtaPath etaProg} -}
+    anyVersion (userMaybeSpecifyPath "eta-pkg" hcPkgPath conf1)
 
-  -- Just ghcvmPkgGhcvmVersion <- findGhcvmPkgGhcvmVersion
-  --                                 verbosity (programPath ghcvmPkgProg)
+  -- Just etaPkgEtaVersion <- findEtaPkgEtaVersion
+  --                                 verbosity (programPath etaPkgProg)
 
-  when (ghcvmVersion /= ghcvmPkgVersion) $ die $
-       "Version mismatch between ghcvm and ghcvm-pkg: "
-    ++ programPath ghcvmProg ++ " is version " ++ display ghcvmVersion ++ " "
-    ++ programPath ghcvmPkgProg ++ " is version " ++ display ghcvmPkgVersion
+  when (etaVersion /= etaPkgVersion) $ die $
+       "Version mismatch between eta and eta-pkg: "
+    ++ programPath etaProg ++ " is version " ++ display etaVersion ++ " "
+    ++ programPath etaPkgProg ++ " is version " ++ display etaPkgVersion
 
-  -- when (ghcvmGhcVersion /= ghcvmPkgVersion) $ die $
-  --      "Version mismatch between ghcvm and ghcvm-pkg: "
-  --   ++ programPath ghcvmProg
-  --   ++ " was built with GHC version " ++ display ghcvmGhcVersion ++ " "
-  --   ++ programPath ghcvmPkgProg
-  --   ++ " was built with GHC version " ++ display ghcvmPkgVersion
+  -- when (etaGhcVersion /= etaPkgVersion) $ die $
+  --      "Version mismatch between eta and eta-pkg: "
+  --   ++ programPath etaProg
+  --   ++ " was built with GHC version " ++ display etaGhcVersion ++ " "
+  --   ++ programPath etaPkgProg
+  --   ++ " was built with GHC version " ++ display etaPkgVersion
 
   -- be sure to use our versions of hsc2hs, c2hs, haddock and ghc
   -- let hsc2hsProgram' =
   --       hsc2hsProgram { programFindLocation =
-  --                         guessHsc2hsFromGhcvmPath ghcvmProg }
+  --                         guessHsc2hsFromEtaPath etaProg }
   --     c2hsProgram' =
   --       c2hsProgram { programFindLocation =
-  --                         guessC2hsFromGhcvmPath ghcvmProg }
+  --                         guessC2hsFromEtaPath etaProg }
 
   --     haddockProgram' =
   --       haddockProgram { programFindLocation =
-  --                         guessHaddockFromGhcvmPath ghcvmProg }
+  --                         guessHaddockFromEtaPath etaProg }
   --     conf3 = addKnownPrograms [ hsc2hsProgram', c2hsProgram', haddockProgram' ] conf2
   let conf3 = conf2 -- TODO: Account for other programs
 
-  languages  <- Internal.getLanguages  verbosity implInfo ghcvmProg
-  extensions <- Internal.getExtensions verbosity implInfo ghcvmProg
+  languages  <- Internal.getLanguages  verbosity implInfo etaProg
+  extensions <- Internal.getExtensions verbosity implInfo etaProg
 
-  ghcvmInfo <- Internal.getGhcInfo verbosity implInfo ghcvmProg
-  let ghcvmInfoMap = M.fromList ghcvmInfo
+  etaInfo <- Internal.getGhcInfo verbosity implInfo etaProg
+  let etaInfoMap = M.fromList etaInfo
 
   let comp = Compiler {
-        compilerId         = CompilerId GHCVM ghcvmVersion,
-        -- TODO: Make this unique for GHCVM?
+        compilerId         = CompilerId ETA etaVersion,
+        -- TODO: Make this unique for ETA?
         compilerAbiTag     = AbiTag $
-          "ghc" ++ intercalate "_" (map show . versionBranch $ ghcvmGhcVersion),
-        compilerCompat     = [CompilerId GHC ghcvmGhcVersion],
+          "ghc" ++ intercalate "_" (map show . versionBranch $ etaGhcVersion),
+        compilerCompat     = [CompilerId GHC etaGhcVersion],
         compilerLanguages  = languages,
         compilerExtensions = extensions,
-        compilerProperties = ghcvmInfoMap
+        compilerProperties = etaInfoMap
       }
       compPlatform = Nothing -- Internal.targetPlatform ghcInfo
   (_, conf4) <- requireProgram verbosity javaProgram conf3
   (_, conf5) <- requireProgram verbosity javacProgram conf4
   return (comp, compPlatform, conf5)
 
-ghcvmNativeToo :: Compiler -> Bool
-ghcvmNativeToo = Internal.ghcLookupProperty "Native Too"
+etaNativeToo :: Compiler -> Bool
+etaNativeToo = Internal.ghcLookupProperty "Native Too"
 
--- guessGhcvmPkgFromGhcvmPath :: ConfiguredProgram -> Verbosity
+-- guessEtaPkgFromEtaPath :: ConfiguredProgram -> Verbosity
 --                            -> ProgramSearchPath -> IO (Maybe FilePath)
--- guessGhcvmPkgFromGhcvmPath = guessToolFromGhcvmPath ghcvmPkgProgram
+-- guessEtaPkgFromEtaPath = guessToolFromEtaPath etaPkgProgram
 
--- guessHsc2hsFromGhcvmPath :: ConfiguredProgram -> Verbosity
+-- guessHsc2hsFromEtaPath :: ConfiguredProgram -> Verbosity
 --                          -> ProgramSearchPath -> IO (Maybe FilePath)
--- guessHsc2hsFromGhcvmPath = guessToolFromGhcvmPath hsc2hsProgram
+-- guessHsc2hsFromEtaPath = guessToolFromEtaPath hsc2hsProgram
 
--- guessC2hsFromGhcvmPath :: ConfiguredProgram -> Verbosity
+-- guessC2hsFromEtaPath :: ConfiguredProgram -> Verbosity
 --                        -> ProgramSearchPath -> IO (Maybe FilePath)
--- guessC2hsFromGhcvmPath = guessToolFromGhcvmPath c2hsProgram
+-- guessC2hsFromEtaPath = guessToolFromEtaPath c2hsProgram
 
--- guessHaddockFromGhcvmPath :: ConfiguredProgram -> Verbosity
+-- guessHaddockFromEtaPath :: ConfiguredProgram -> Verbosity
 --                           -> ProgramSearchPath -> IO (Maybe FilePath)
--- guessHaddockFromGhcvmPath = guessToolFromGhcvmPath haddockProgram
+-- guessHaddockFromEtaPath = guessToolFromEtaPath haddockProgram
 
--- guessToolFromGhcvmPath :: Program -> ConfiguredProgram
+-- guessToolFromEtaPath :: Program -> ConfiguredProgram
 --                        -> Verbosity -> ProgramSearchPath
 --                        -> IO (Maybe FilePath)
--- guessToolFromGhcvmPath tool ghcvmProg verbosity searchpath
+-- guessToolFromEtaPath tool etaProg verbosity searchpath
 --   = do let toolname          = programName tool
---            path              = programPath ghcvmProg
+--            path              = programPath etaProg
 --            dir               = takeDirectory path
 --            versionSuffix     = takeVersionSuffix (dropExeExtension path)
 --            guessNormal       = dir </> toolname <.> exeExtension
---            guessGhcvmVersioned = dir </> (toolname ++ "-ghcvm" ++ versionSuffix)
+--            guessEtaVersioned = dir </> (toolname ++ "-eta" ++ versionSuffix)
 --                                  <.> exeExtension
---            guessGhcvm        = dir </> (toolname ++ "-ghcvm")
+--            guessEta        = dir </> (toolname ++ "-eta")
 --                                <.> exeExtension
 --            guessVersioned    = dir </> (toolname ++ versionSuffix) <.> exeExtension
---            guesses | null versionSuffix = [guessGhcvm, guessNormal]
---                    | otherwise          = [guessGhcvmVersioned,
---                                            guessGhcvm,
+--            guesses | null versionSuffix = [guessEta, guessNormal]
+--                    | otherwise          = [guessEtaVersioned,
+--                                            guessEta,
 --                                            guessVersioned,
 --                                            guessNormal]
 --        info verbosity $ "looking for tool " ++ toolname
@@ -242,7 +242,7 @@ toPackageIndex verbosity pkgss conf = do
 
 checkPackageDbEnvVar :: IO ()
 checkPackageDbEnvVar =
-    Internal.checkPackageDbEnvVar "GHCVM" "GHCVM_PACKAGE_PATH"
+    Internal.checkPackageDbEnvVar "ETA" "ETA_PACKAGE_PATH"
 
 checkPackageDbStack :: PackageDBStack -> IO ()
 checkPackageDbStack (GlobalPackageDB:rest)
@@ -267,19 +267,19 @@ getInstalledPackages' verbosity packagedbs conf =
 getLibDir :: Verbosity -> LocalBuildInfo -> IO FilePath
 getLibDir verbosity lbi =
     (reverse . dropWhile isSpace . reverse) `fmap`
-     rawSystemProgramStdoutConf verbosity ghcvmProgram
+     rawSystemProgramStdoutConf verbosity etaProgram
      (withPrograms lbi) ["--print-libdir"]
 
 getLibDir' :: Verbosity -> ConfiguredProgram -> IO FilePath
-getLibDir' verbosity ghcvmProg =
+getLibDir' verbosity etaProg =
     (reverse . dropWhile isSpace . reverse) `fmap`
-     rawSystemProgramStdout verbosity ghcvmProg ["--print-libdir"]
+     rawSystemProgramStdout verbosity etaProg ["--print-libdir"]
 
 -- | Return the 'FilePath' to the global GHC package database.
 getGlobalPackageDB :: Verbosity -> ConfiguredProgram -> IO FilePath
-getGlobalPackageDB verbosity ghcvmProg =
+getGlobalPackageDB verbosity etaProg =
     (reverse . dropWhile isSpace . reverse) `fmap`
-     rawSystemProgramStdout verbosity ghcvmProg ["--print-global-package-db"]
+     rawSystemProgramStdout verbosity etaProg ["--print-global-package-db"]
 
 toJavaLibName :: String -> String
 toJavaLibName lib
@@ -310,8 +310,8 @@ buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
       hole_insts = map (\(k,(p,n)) -> (k,(InstalledPackageInfo.packageKey p,n)))
                        (instantiatedWith lbi)
 
-  (ghcvmProg, _) <- requireProgram verbosity ghcvmProgram (withPrograms lbi)
-  let runGhcvmProg        = runGHC verbosity ghcvmProg comp
+  (etaProg, _) <- requireProgram verbosity etaProgram (withPrograms lbi)
+  let runEtaProg        = runGHC verbosity etaProg comp
       libBi               = libBuildInfo lib
 
   createDirectoryIfMissingVerbose verbosity True libTargetDir
@@ -334,7 +334,7 @@ buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
       sharedOpts  = vanillaOpts' `mappend` mempty {
                         ghcOptShared = toFlag True,
                         ghcOptExtra       = toNubListR $
-                                            ghcvmSharedOptions libBi
+                                            etaSharedOptions libBi
                       }
       vanillaOpts = vanillaOpts' {
                         ghcOptExtraDefault = toNubListR ["-staticlib"]
@@ -342,8 +342,8 @@ buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
       target = libTargetDir </> mkJarName libName
 
   unless (forRepl || (null (libModules lib) && null javaSrcs)) $ do
-       when isVanillaLib $ runGhcvmProg vanillaOpts
-       when isSharedLib  $ runGhcvmProg sharedOpts
+       when isVanillaLib $ runEtaProg vanillaOpts
+       when isSharedLib  $ runEtaProg sharedOpts
 
 -- | Start a REPL without loading any source files.
 startInterpreter :: Verbosity -> ProgramConfiguration -> Compiler
@@ -354,8 +354,8 @@ startInterpreter verbosity conf comp packageDBs = do
         ghcOptPackageDBs = packageDBs
         }
   checkPackageDbStack packageDBs
-  (ghcvmProg, _) <- requireProgram verbosity ghcvmProgram conf
-  runGHC verbosity ghcvmProg comp replOpts
+  (etaProg, _) <- requireProgram verbosity etaProgram conf
+  runGHC verbosity etaProg comp replOpts
 
 buildExe, replExe :: Verbosity          -> Cabal.Flag (Maybe Int)
                   -> PackageDescription -> LocalBuildInfo
@@ -369,8 +369,8 @@ buildOrReplExe :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
 buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
   exe@Executable { exeName = exeName', modulePath = modPath } clbi = do
 
-  (ghcvmProg, _) <- requireProgram verbosity ghcvmProgram (withPrograms lbi)
-  let runGhcvmProg = runGHC verbosity ghcvmProg comp
+  (etaProg, _) <- requireProgram verbosity etaProgram (withPrograms lbi)
+  let runEtaProg = runGHC verbosity etaProg comp
 
   createDirectoryIfMissingVerbose verbosity True exeDir
 
@@ -385,7 +385,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                    ghcOptShared       = toFlag isShared
                  }
 
-  runGhcvmProg baseOpts
+  runEtaProg baseOpts
   -- Generate .sh file
   classPaths' <- if isShared
                 then getDependencyClassPaths
@@ -397,7 +397,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                          ++ "DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"\n"
                          ++ "java -classpath \"$DIR/" ++ exeNameReal
                          ++ (if null classPaths then "" else ':' : intercalate ":" classPaths)
-                         ++ "\" ghcvm.main\n"
+                         ++ "\" eta.main\n"
       scriptFile = targetDir </> (exeNameReal -<.> "sh")
   writeUTF8File scriptFile generateExeScript
   p <- getPermissions scriptFile
@@ -491,14 +491,14 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
         }
       -- profArgs = adjustExts "js_p_hi" "js_p_o" vanillaArgs `mappend` mempty {
       --                ghcOptProfilingMode = toFlag True,
-      --                ghcOptExtra         = toNubListR (ghcvmProfOptions libBi)
+      --                ghcOptExtra         = toNubListR (etaProfOptions libBi)
       --            }
       ghcArgs = if withVanillaLib lbi then vanillaArgs
 --           else if withProfLib    lbi then profArgs
                 else error "libAbiHash: Can't find an enabled library way"
   --
-  (ghcvmProg, _) <- requireProgram verbosity ghcvmProgram (withPrograms lbi)
-  getProgramInvocationOutput verbosity (ghcInvocation ghcvmProg comp ghcArgs)
+  (etaProg, _) <- requireProgram verbosity etaProgram (withPrograms lbi)
+  getProgramInvocationOutput verbosity (ghcInvocation etaProg comp ghcArgs)
 
 registerPackage :: Verbosity
                 -> InstalledPackageInfo
@@ -520,18 +520,18 @@ componentGhcOptions verbosity lbi bi clbi odir =
   in  opts
   {
     ghcOptExtra = ghcOptExtra opts
-      `mappend` toNubListR (["-pgmjavac", javacPath] ++  (hcOptions GHCVM bi))
+      `mappend` toNubListR (["-pgmjavac", javacPath] ++  (hcOptions ETA bi))
   }
   where Just javacProg = lookupProgram javacProgram (withPrograms lbi)
         javacPath = locationPath (programLocation javacProg)
 
--- ghcvmProfOptions :: BuildInfo -> [String]
--- ghcvmProfOptions bi =
---   hcProfOptions GHC bi `mappend` hcProfOptions GHCVM bi
+-- etaProfOptions :: BuildInfo -> [String]
+-- etaProfOptions bi =
+--   hcProfOptions GHC bi `mappend` hcProfOptions ETA bi
 
-ghcvmSharedOptions :: BuildInfo -> [String]
-ghcvmSharedOptions bi =
-  hcSharedOptions GHC bi `mappend` hcSharedOptions GHCVM bi
+etaSharedOptions :: BuildInfo -> [String]
+etaSharedOptions bi =
+  hcSharedOptions GHC bi `mappend` hcSharedOptions ETA bi
 
 -- TODO: Correct default?
 isDynamic :: Compiler -> Bool
@@ -540,19 +540,19 @@ isDynamic = const True
 supportsDynamicToo :: Compiler -> Bool
 supportsDynamicToo = Internal.ghcLookupProperty "Support dynamic-too"
 
--- findGhcvmGhcVersion :: Verbosity -> FilePath -> IO (Maybe Version)
--- findGhcvmGhcVersion verbosity pgm =
+-- findEtaGhcVersion :: Verbosity -> FilePath -> IO (Maybe Version)
+-- findEtaGhcVersion verbosity pgm =
 --   findProgramVersion "--numeric-ghc-version" id verbosity pgm
 
--- findGhcvmPkgGhcvmVersion :: Verbosity -> FilePath -> IO (Maybe Version)
--- findGhcvmPkgGhcvmVersion verbosity pgm =
---   findProgramVersion "--numeric-ghcvm-version" id verbosity pgm
+-- findEtaPkgEtaVersion :: Verbosity -> FilePath -> IO (Maybe Version)
+-- findEtaPkgEtaVersion verbosity pgm =
+--   findProgramVersion "--numeric-eta-version" id verbosity pgm
 
 -- -----------------------------------------------------------------------------
 -- Registering
 
 hcPkgInfo :: ProgramConfiguration -> HcPkg.HcPkgInfo
-hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcvmPkgProg
+hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = etaPkgProg
                                  , HcPkg.noPkgDbStack    = False
                                  , HcPkg.noVerboseFlag   = False
                                  , HcPkg.flagPackageConf = False
@@ -560,12 +560,12 @@ hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcvmPkgProg
                                  }
   where
     v                 = versionBranch ver
-    Just ghcvmPkgProg = lookupProgram ghcvmPkgProgram conf
-    Just ver          = programVersion ghcvmPkgProg
+    Just etaPkgProg = lookupProgram etaPkgProgram conf
+    Just ver          = programVersion etaPkgProg
 
--- NOTE: GHCVM is frozen after 7.10.3
-ghcvmGhcVersion :: Version
-ghcvmGhcVersion = makeVersion [7,10,3]
+-- NOTE: ETA is frozen after 7.10.3
+etaGhcVersion :: Version
+etaGhcVersion = makeVersion [7,10,3]
 
 jarExtension :: String
 jarExtension = "jar"

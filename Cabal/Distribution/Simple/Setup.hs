@@ -214,8 +214,8 @@ globalCommand commands = CommandUI
   { commandName         = ""
   , commandSynopsis     = ""
   , commandUsage        = \pname ->
-         "This Setup program uses CabalVM (Cabal for GHCVM).\n"
-      ++ "See https://github.com/rahulmutt/cabalvm/tree/1.22 for more information.\n"
+         "This Setup program uses Epm (Cabal for ETA).\n"
+      ++ "See https://github.com/typelead/epm/tree/1.22 for more information.\n"
       ++ "\n"
       ++ "Usage: " ++ pname ++ " [GLOBAL FLAGS] [COMMAND [FLAGS]]\n"
   , commandDescription = Just $ \pname ->
@@ -409,7 +409,7 @@ configureOptions showOrParseArgs =
          configHcFlavor (\v flags -> flags { configHcFlavor = v })
          (choiceOpt [ (Flag GHC,   ("g", ["ghc"]),   "compile with GHC")
                     , (Flag GHCJS, ([] , ["ghcjs"]), "compile with GHCJS")
-                    , (Flag GHCVM, ([] , ["ghcvm"]), "compile with GHCVM")
+                    , (Flag ETA,   ([] , ["eta"]),   "compile with ETA")
                     , (Flag JHC,   ([] , ["jhc"]),   "compile with JHC")
                     , (Flag LHC,   ([] , ["lhc"]),   "compile with LHC")
                     , (Flag UHC,   ([] , ["uhc"]),   "compile with UHC")

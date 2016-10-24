@@ -22,7 +22,7 @@ module Distribution.Simple.Haddock (
 
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
-import qualified Distribution.Simple.GHCVM as GHCVM
+import qualified Distribution.Simple.ETA as ETA
 
 -- local
 import Distribution.Package
@@ -291,7 +291,7 @@ componentGhcOptions verbosity lbi bi clbi odir =
   let f = case compilerFlavor (compiler lbi) of
             GHC   -> GHC.componentGhcOptions
             GHCJS -> GHCJS.componentGhcOptions
-            GHCVM -> GHCVM.componentGhcOptions
+            ETA -> ETA.componentGhcOptions
             _     -> error $
                        "Distribution.Simple.Haddock.componentGhcOptions:" ++
                        "haddock only supports GHC and GHCJS"
@@ -440,7 +440,7 @@ getGhcLibDir verbosity lbi = do
     l <- case compilerFlavor (compiler lbi) of
             GHC   -> GHC.getLibDir   verbosity lbi
             GHCJS -> GHCJS.getLibDir verbosity lbi
-            --GHCVM -> GHCVM.getLibDir verbosity lbi
+            --ETA -> ETA.getLibDir verbosity lbi
             _     -> error "haddock only supports GHC and GHCJS"
     return $ mempty { argGhcLibDir = Flag l }
 

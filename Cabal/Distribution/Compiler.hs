@@ -60,7 +60,7 @@ import Text.PrettyPrint ((<>))
 import qualified Data.Char as Char (toLower, isDigit, isAlphaNum)
 import Control.Monad (when)
 
-data CompilerFlavor = GHC | GHCJS | GHCVM | NHC | YHC | Hugs | HBC | Helium | JHC | LHC | UHC
+data CompilerFlavor = GHC | GHCJS | ETA | NHC | YHC | Hugs | HBC | Helium | JHC | LHC | UHC
                     | HaskellSuite String -- string is the id of the actual compiler
                     | OtherCompiler String
   deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
@@ -68,7 +68,7 @@ data CompilerFlavor = GHC | GHCJS | GHCVM | NHC | YHC | Hugs | HBC | Helium | JH
 instance Binary CompilerFlavor
 
 knownCompilerFlavors :: [CompilerFlavor]
-knownCompilerFlavors = [GHC, GHCJS, GHCVM, NHC, YHC, Hugs, HBC, Helium, JHC, LHC, UHC]
+knownCompilerFlavors = [GHC, GHCJS, ETA, NHC, YHC, Hugs, HBC, Helium, JHC, LHC, UHC]
 
 instance Text CompilerFlavor where
   disp (OtherCompiler name) = Disp.text name
@@ -129,7 +129,7 @@ buildCompilerId = CompilerId buildCompilerFlavor buildCompilerVersion
 -- will have to specify which compiler they want.
 --
 defaultCompilerFlavor :: Maybe CompilerFlavor
-defaultCompilerFlavor = Just GHCVM
+defaultCompilerFlavor = Just ETA
 
   -- case buildCompilerFlavor of
   --   OtherCompiler _ -> Nothing

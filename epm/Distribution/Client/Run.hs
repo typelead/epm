@@ -71,7 +71,7 @@ run verbosity lbi exe exeArgs = do
 
   (path, runArgs) <-
     case compilerFlavor (compiler lbi) of
-      GHCVM -> do
+      ETA -> do
          p <- tryCanonicalizePath $
             buildPref </> exeName exe </> (exeName exe <.> "sh")
          return (p, [])

@@ -200,8 +200,13 @@ gitProgram = (simpleProgram "git") {
     programFindVersion = findProgramVersion "--version" $ \str ->
         -- Invoking "git --version" gives a string like
         --- "git version 2.7.4 (Apple Git-66)"
-        case words str of
-          (_:_:version:_) -> version
+        let split cs = case break (=='.') cs of
+              (chunk,[])     -> chunk : []
+              (chunk,_:rest) -> chunk : split rest
+            join [s] = s
+            join (s:ss) = s ++ ('.' : join ss)
+        in case words str of
+          (_:_:version:_) -> join . take 3 $ split version
           _               -> ""
   }
 

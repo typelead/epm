@@ -212,7 +212,7 @@ readRepoIndex verbosity repo mode =
         case repoKind repo of
           Left  remoteRepo -> warn verbosity $
                "The package list for '" ++ remoteRepoName remoteRepo
-            ++ "' does not exist. Run 'cabal update' to download it."
+            ++ "' does not exist. Run 'epm update' to download it."
           Right _localRepo -> warn verbosity $
                "The package list for the local repo '" ++ repoLocalDir repo
             ++ "' is missing. The repo is invalid."
@@ -225,7 +225,7 @@ readRepoIndex verbosity repo mode =
         Left  remoteRepo -> warn verbosity $
              "The package list for '" ++ remoteRepoName remoteRepo
           ++ "' is " ++ showFFloat (Just 1) dt " days old.\nRun "
-          ++ "'cabal update' to get the latest list of available packages."
+          ++ "'epm update' to get the latest list of available packages."
         Right _localRepo -> return ()
 
 

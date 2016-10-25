@@ -1503,7 +1503,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs pkg_key
                rawSystemExit verbosity cmd
                  [self, "install", "--only"
                  ,"--verbose=" ++ showForCabal verbosity]
-        else die $ "Unable to find cabal executable at: " ++ self
+        else die $ "Unable to find epm executable at: " ++ self
 
 
 -- helper

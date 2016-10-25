@@ -51,7 +51,7 @@ splitRunArgs lbi args =
     _     -> case args of
       []     -> die $ "This package contains multiple executables. "
                 ++ "You must pass the executable name as the first argument "
-                ++ "to 'cabal run'."
+                ++ "to 'epm run'."
       (x:xs) -> case find (\exe -> exeName exe == x) exes of
         Nothing  -> die $ "No executable named '" ++ x ++ "'."
         Just exe -> return (exe, xs)

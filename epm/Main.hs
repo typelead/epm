@@ -207,7 +207,7 @@ mainWorker args = topHandler $
       exists <- doesFileExist configFile
       when (not exists) $
           putStrLn $ "This file will be generated with sensible "
-                  ++ "defaults if you run 'cabal update'."
+                  ++ "defaults if you run 'epm update'."
     printOptionsList = putStr . unlines
     printErrors errs = die $ intercalate "\n" errs
     printNumericVersion = putStrLn $ display Paths_epm.version
@@ -889,9 +889,9 @@ updateAction verbosityFlag extraArgs globalFlags = do
 upgradeAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
               -> [String] -> GlobalFlags -> IO ()
 upgradeAction _ _ _ = die $
-    "Use the 'cabal install' command instead of 'cabal upgrade'.\n"
- ++ "You can install the latest version of a package using 'cabal install'. "
- ++ "The 'cabal upgrade' command has been removed because people found it "
+    "Use the 'epm install' command instead of 'epm upgrade'.\n"
+ ++ "You can install the latest version of a package using 'epm install'. "
+ ++ "The 'epm upgrade' command has been removed because people found it "
  ++ "confusing and it often led to broken packages.\n"
  ++ "If you want the old upgrade behaviour then use the install command "
  ++ "with the --upgrade-dependencies flag (but check first with --dry-run "

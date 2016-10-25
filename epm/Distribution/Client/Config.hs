@@ -554,7 +554,7 @@ writeConfigFile file comments vals = do
   renameFile tmpFile file
   where
     explanation = unlines
-      ["-- This is the configuration file for the 'cabal' command line tool."
+      ["-- This is the configuration file for the 'epm' command line tool."
       ,""
       ,"-- The available configuration options are listed below."
       ,"-- Some of them have default values listed."

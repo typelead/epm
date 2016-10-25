@@ -214,7 +214,7 @@ globalCommand commands = CommandUI
   { commandName         = ""
   , commandSynopsis     = ""
   , commandUsage        = \pname ->
-         "This Setup program uses Epm (Cabal for ETA).\n"
+         "This Setup program uses EPM (ETA Package Manager).\n"
       ++ "See https://github.com/typelead/epm/tree/1.22 for more information.\n"
       ++ "\n"
       ++ "Usage: " ++ pname ++ " [GLOBAL FLAGS] [COMMAND [FLAGS]]\n"

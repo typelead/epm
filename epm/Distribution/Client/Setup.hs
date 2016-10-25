@@ -145,7 +145,7 @@ globalCommand :: [Command action] -> CommandUI GlobalFlags
 globalCommand commands = CommandUI {
     commandName         = "",
     commandSynopsis     =
-         "Command line interface to Epm (Cabal for ETA).",
+         "Command line interface to EPM (ETA Package Manager).",
     commandUsage        = \pname ->
          "See https://github.com/typelead/epm/tree/1.22 for more information.\n"
       ++ "\n"

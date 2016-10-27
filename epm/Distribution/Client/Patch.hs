@@ -50,7 +50,11 @@ findCabalFilePatch cabalFile = do
   then fmap Just $ BS.readFile cabalPatchLocation
   else return Nothing
 
-patchedExtractTarGzFile :: Verbosity -> FilePath -> FilePath -> FilePath -> IO ()
+patchedExtractTarGzFile :: Verbosity 
+                        -> FilePath -- ^ Destination directory of tar.gz file
+                        -> FilePath -- ^ Expected subdir (to check for tarbombs)
+                        -> FilePath -- ^ Tarball
+                        -> IO ()
 patchedExtractTarGzFile verbosity dir expected tar = do
   patchesDir <- defaultPatchesDir
   -- TODO: Speed this up with a cache?

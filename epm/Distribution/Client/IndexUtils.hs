@@ -51,6 +51,7 @@ import Distribution.Simple.Program
          ( ProgramConfiguration )
 import qualified Distribution.Simple.Configure as Configure
          ( getInstalledPackages )
+import Distribution.Client.Config  ( defaultPatchesDir )
 import Distribution.ParseUtils
          ( ParseResult(..) )
 import Distribution.Version
@@ -450,7 +451,7 @@ packageIndexFromCache mkPkg hnd entrs mode = accum mempty [] entrs
       -- from the index tarball if it turns out that we need it.
       -- Most of the time we only need the package id.
       ~(pkg, pkgtxt) <- unsafeInterleaveIO $ do
-        mPatch <- patchedPackageCabalFile pkgid
+        mPatch <- patchedPackageCabalFile pkgid defaultPatchesDir
         pkgtxt <- maybe (getEntryContent blockno) return mPatch
         pkg    <- readPackageDescription pkgtxt
         return (pkg, pkgtxt)

@@ -228,6 +228,7 @@ instance Monoid SavedConfig where
         installShadowPkgs            = combine installShadowPkgs,
         installStrongFlags           = combine installStrongFlags,
         installReinstall             = combine installReinstall,
+        installEtaPatchesDirectory = combine installEtaPatchesDirectory,
         installAvoidReinstalls       = combine installAvoidReinstalls,
         installOverrideReinstall     = combine installOverrideReinstall,
         installUpgradeDeps           = combine installUpgradeDeps,

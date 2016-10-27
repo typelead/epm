@@ -24,25 +24,31 @@ import System.Directory            ( doesFileExist )
 
 import qualified Data.ByteString.Lazy as BS
 
-patchedPackageCabalFile :: PackageIdentifier -> IO (Maybe BS.ByteString)
+patchedPackageCabalFile :: PackageIdentifier 
+                        -> IO FilePath
+                        -> IO (Maybe BS.ByteString)
 patchedPackageCabalFile
   (PackageIdentifier
     { pkgName = name
-    , pkgVersion = Version { versionBranch = versions } })
-  = findCabalFilePatch $ unPackageName name
+    , pkgVersion = Version { versionBranch = versions } }) patchesDir
+  = findCabalFilePatch (unPackageName name
                       ++ "-"
                       ++ (intercalate "." $ map show versions)
-                      <.> "cabal"
+                      <.> "cabal") patchesDir
 
-patchedTarPackageCabalFile :: FilePath -> IO (Maybe (FilePath, BS.ByteString))
-patchedTarPackageCabalFile tarFilePath =
-  fmap (fmap (\bs -> (cabalFile, bs))) $ findCabalFilePatch cabalFile
+patchedTarPackageCabalFile :: FilePath 
+                           -> IO FilePath
+                           -> IO (Maybe (FilePath, BS.ByteString))
+patchedTarPackageCabalFile tarFilePath patchesDir' = 
+  fmap (fmap (\bs -> (cabalFile, bs))) $ findCabalFilePatch cabalFile patchesDir'
   where packageAndVersion = dropExtension . dropExtension $ tarFilePath
         cabalFile = packageAndVersion <.> "cabal"
 
-findCabalFilePatch :: FilePath -> IO (Maybe BS.ByteString)
-findCabalFilePatch cabalFile = do
-  patchesDir <- defaultPatchesDir
+findCabalFilePatch :: FilePath 
+                   -> IO FilePath -- ^ Filepath of the patches directory
+                   -> IO (Maybe BS.ByteString)
+findCabalFilePatch cabalFile patchesDir' = do
+  patchesDir <- patchesDir'
   -- TODO: Speed this up with a cache?
   let cabalPatchLocation = patchesDir </> "patches" </> cabalFile
   exists <- doesFileExist cabalPatchLocation
@@ -50,9 +56,14 @@ findCabalFilePatch cabalFile = do
   then fmap Just $ BS.readFile cabalPatchLocation
   else return Nothing
 
-patchedExtractTarGzFile :: Verbosity -> FilePath -> FilePath -> FilePath -> IO ()
-patchedExtractTarGzFile verbosity dir expected tar = do
-  patchesDir <- defaultPatchesDir
+patchedExtractTarGzFile :: Verbosity 
+                        -> FilePath -- ^ Destination directory of tar.gz file
+                        -> FilePath -- ^ Expected subdir (to check for tarbombs)
+                        -> FilePath -- ^ Tarball
+                        -> IO FilePath -- ^ Filepath of the patches directory
+                        -> IO ()
+patchedExtractTarGzFile verbosity dir expected tar patchesDir' = do
+  patchesDir <- patchesDir'
   -- TODO: Speed this up with a cache?
   let patchFileLocation = patchesDir </> "patches" </> patchFile
   exists <- doesFileExist patchFileLocation

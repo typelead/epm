@@ -79,7 +79,7 @@ import Distribution.Client.Setup
          , ConfigFlags(..), configureCommand, filterConfigureFlags
          , ConfigExFlags(..), InstallFlags(..) )
 import Distribution.Client.Config
-         ( defaultCabalDir, defaultUserInstall )
+         ( defaultCabalDir, defaultUserInstall, defaultPatchesDir )
 import Distribution.Client.Patch
 import Distribution.Client.Sandbox.Timestamp
          ( withUpdateTimestamps )
@@ -1009,7 +1009,7 @@ performInstallations verbosity
                         rpkg $ \configFlags' src pkg pkgoverride ->
       fetchSourcePackage verbosity fetchLimit src $ \src' ->
         installLocalPackage verbosity buildLimit
-                            (packageId pkg) src' distPref $ \mpath ->
+                            (packageId pkg) src' distPref etaPatchesDir $ \mpath ->
           installUnpackedPackage verbosity buildLimit installLock numJobs pkg_key
                                  (setupScriptOptions installedPkgIndex cacheLock)
                                  miscOptions configFlags' installFlags haddockFlags
@@ -1052,6 +1052,7 @@ performInstallations verbosity
     }
     reportingLevel = fromFlag (installBuildReports installFlags)
     logsDir        = fromFlag (globalLogsDir globalFlags)
+    etaPatchesDir = fromFlagOrDefault [] (installEtaPatchesDirectory installFlags)
 
     -- Should the build output be written to a log file instead of stdout?
     useLogFile :: UseLogFile
@@ -1234,9 +1235,10 @@ installLocalPackage
   :: Verbosity
   -> JobLimit
   -> PackageIdentifier -> PackageLocation FilePath -> FilePath
+  -> FilePath
   -> (Maybe FilePath -> IO BuildResult)
   -> IO BuildResult
-installLocalPackage verbosity jobLimit pkgid location distPref installPkg =
+installLocalPackage verbosity jobLimit pkgid location distPref patchDir installPkg =
 
   case location of
 
@@ -1245,15 +1247,15 @@ installLocalPackage verbosity jobLimit pkgid location distPref installPkg =
 
     LocalTarballPackage tarballPath ->
       installLocalTarballPackage verbosity jobLimit
-        pkgid tarballPath distPref installPkg
+        pkgid tarballPath distPref installPkg patchDir
 
     RemoteTarballPackage _ tarballPath ->
       installLocalTarballPackage verbosity jobLimit
-        pkgid tarballPath distPref installPkg
+        pkgid tarballPath distPref installPkg patchDir
 
     RepoTarballPackage _ _ tarballPath ->
       installLocalTarballPackage verbosity jobLimit
-        pkgid tarballPath distPref installPkg
+        pkgid tarballPath distPref installPkg patchDir
 
 
 installLocalTarballPackage
@@ -1261,9 +1263,10 @@ installLocalTarballPackage
   -> JobLimit
   -> PackageIdentifier -> FilePath -> FilePath
   -> (Maybe FilePath -> IO BuildResult)
+  -> FilePath
   -> IO BuildResult
 installLocalTarballPackage verbosity jobLimit pkgid
-                           tarballPath distPref installPkg = do
+                           tarballPath distPref installPkg patchDir = do
   tmp <- getTemporaryDirectory
   withTempDirectory verbosity tmp "cabal-tmp" $ \tmpDirPath ->
     onFailure UnpackFailed $ do
@@ -1274,7 +1277,7 @@ installLocalTarballPackage verbosity jobLimit pkgid
       withJobLimit jobLimit $ do
         info verbosity $ "Extracting " ++ tarballPath
                       ++ " to " ++ tmpDirPath ++ "..."
-        patchedExtractTarGzFile verbosity tmpDirPath relUnpackedPath tarballPath
+        patchedExtractTarGzFile verbosity tmpDirPath relUnpackedPath tarballPath (patchDir' patchDir)
         exists <- doesFileExist descFilePath
         when (not exists) $
           die $ "Package .cabal file not found: " ++ show descFilePath
@@ -1290,6 +1293,10 @@ installLocalTarballPackage verbosity jobLimit pkgid
     --
     -- TODO: 'cabal get happy && cd sandbox && cabal install ../happy' still
     -- fails even with this workaround. We probably can live with that.
+    patchDir' pd = case pd of
+                     [] -> defaultPatchesDir
+                     _ -> return patchDir
+
     maybeRenameDistDir :: FilePath -> IO ()
     maybeRenameDistDir absUnpackedPath = do
       let distDirPath    = absUnpackedPath </> defaultDistPref

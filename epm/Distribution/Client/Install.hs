@@ -1268,18 +1268,12 @@ installLocalTarballPackage
 installLocalTarballPackage verbosity jobLimit pkgid
                            tarballPath distPref installPkg patchDir = do
   tmp <- getTemporaryDirectory
-  print "patchDir"
-  print $ patchDir
   withTempDirectory verbosity tmp "cabal-tmp" $ \tmpDirPath ->
     onFailure UnpackFailed $ do
       let relUnpackedPath = display pkgid
           absUnpackedPath = tmpDirPath </> relUnpackedPath
           descFilePath = absUnpackedPath
                      </> display (packageName pkgid) <.> "cabal"
-      print $ relUnpackedPath
-      print $ absUnpackedPath
-      print $ descFilePath
-      print $ tmpDirPath
       withJobLimit jobLimit $ do
         info verbosity $ "Extracting " ++ tarballPath
                       ++ " to " ++ tmpDirPath ++ "..."

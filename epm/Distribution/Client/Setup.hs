@@ -1145,7 +1145,8 @@ data InstallFlags = InstallFlags {
     installSymlinkBinDir    :: Flag FilePath,
     installOneShot          :: Flag Bool,
     installNumJobs          :: Flag (Maybe Int),
-    installRunTests         :: Flag Bool
+    installRunTests         :: Flag Bool,
+    installEtaPatchesDirectory :: Flag FilePath
   }
 
 defaultInstallFlags :: InstallFlags
@@ -1172,7 +1173,8 @@ defaultInstallFlags = InstallFlags {
     installSymlinkBinDir   = mempty,
     installOneShot         = Flag False,
     installNumJobs         = mempty,
-    installRunTests        = mempty
+    installRunTests        = mempty,
+    installEtaPatchesDirectory = mempty
   }
   where
     docIndexFile = toPathTemplate ("$datadir" </> "doc"
@@ -1346,6 +1348,11 @@ installOptions showOrParseArgs =
            installSymlinkBinDir (\v flags -> flags { installSymlinkBinDir = v })
            (reqArgFlag "DIR")
 
+      , option [] ["eta-patches-directory"]
+          "Specify explicit Eta patches directory"
+          installEtaPatchesDirectory (\v flags -> flags { installEtaPatchesDirectory = v })
+          (reqArgFlag "DIR")
+
       , option [] ["build-summary"]
           "Save build summaries to file (name template can use $pkgid, $compiler, $os, $arch)"
           installSummaryFile (\v flags -> flags { installSummaryFile = v })
@@ -1417,7 +1424,8 @@ instance Monoid InstallFlags where
     installSymlinkBinDir   = mempty,
     installOneShot         = mempty,
     installNumJobs         = mempty,
-    installRunTests        = mempty
+    installRunTests        = mempty,
+    installEtaPatchesDirectory = mempty
   }
   mappend a b = InstallFlags {
     installDocumentation   = combine installDocumentation,
@@ -1442,7 +1450,8 @@ instance Monoid InstallFlags where
     installSymlinkBinDir   = combine installSymlinkBinDir,
     installOneShot         = combine installOneShot,
     installNumJobs         = combine installNumJobs,
-    installRunTests        = combine installRunTests
+    installRunTests        = combine installRunTests,
+    installEtaPatchesDirectory = combine installEtaPatchesDirectory
   }
     where combine field = field a `mappend` field b
 

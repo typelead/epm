@@ -43,7 +43,7 @@ import Distribution.Client.Compat.Process
         ( readProcessWithExitCode )
 import Distribution.Compat.Exception
         ( catchIO )
-
+import Distribution.Client.Config  ( defaultPatchesDir )
 import Control.Exception
          ( finally )
 import Control.Monad
@@ -170,7 +170,7 @@ unpackPackage verbosity prefix pkgid descOverride pkgPath = do
     when existsFile $ die $
      "A file \"" ++ pkgdir ++ "\" is in the way, not unpacking."
     notice verbosity $ "Unpacking to " ++ pkgdir'
-    patchedExtractTarGzFile verbosity prefix pkgdirname pkgPath
+    patchedExtractTarGzFile verbosity prefix pkgdirname pkgPath defaultPatchesDir
 
     case descOverride of
       Nothing     -> return ()

@@ -45,6 +45,10 @@ module Distribution.Client.Targets (
 
   ) where
 
+import System.Directory
+         ( getAppUserDataDirectory)
+import System.FilePath
+         ( (</>))
 import Distribution.Package
          ( Package(..), PackageName(..)
          , PackageIdentifier(..), packageName, packageVersion
@@ -53,7 +57,6 @@ import Distribution.Client.Types
          ( SourcePackage(..), PackageLocation(..), OptionalStanza(..) )
 import Distribution.Client.Dependency.Types
          ( PackageConstraint(..) )
-
 import qualified Distribution.Client.World as World
 import Distribution.Client.PackageIndex (PackageIndex)
 import qualified Distribution.Client.PackageIndex as PackageIndex
@@ -462,6 +465,15 @@ fetchPackageTarget verbosity target = case target of
 --
 -- This only affects targets given by location, named targets are unaffected.
 --
+
+defaultCabalDir :: IO FilePath
+defaultCabalDir = getAppUserDataDirectory "epm"
+
+defaultPatchesDir :: IO FilePath
+defaultPatchesDir = do
+  dir <- defaultCabalDir
+  return $ dir </> "patches"
+
 readPackageTarget :: Verbosity
                   -> PackageTarget (PackageLocation FilePath)
                   -> IO (PackageTarget SourcePackage)
@@ -515,7 +527,7 @@ readPackageTarget verbosity target = case target of
     extractTarballPackageCabalFile :: FilePath -> String
                                    -> IO (FilePath, BS.ByteString)
     extractTarballPackageCabalFile tarballFile tarballOriginalLoc = do
-      maybePatchedCabalFile <- patchedTarPackageCabalFile tarballFile
+      maybePatchedCabalFile <- patchedTarPackageCabalFile tarballFile defaultPatchesDir
       maybe
         ( either (die . formatErr) return
         . check

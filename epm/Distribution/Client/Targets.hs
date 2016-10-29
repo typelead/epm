@@ -64,6 +64,7 @@ import qualified Distribution.Client.Tar as Tar
 import Distribution.Client.FetchUtils
 import Distribution.Client.Utils ( tryFindPackageDesc )
 import {-# SOURCE #-} Distribution.Client.Patch ( patchedTarPackageCabalFile )
+import {-# SOURCE #-} Distribution.Client.Config (defaultCabalDir, defaultPatchesDir)
 
 import Distribution.PackageDescription
          ( GenericPackageDescription, FlagName(..), FlagAssignment )
@@ -465,16 +466,6 @@ fetchPackageTarget verbosity target = case target of
 --
 -- This only affects targets given by location, named targets are unaffected.
 --
-
--- We are not using the functions present in Client.Config and 
--- instead defining it again to avoid cyclic import error.
-defaultCabalDir :: IO FilePath
-defaultCabalDir = getAppUserDataDirectory "epm"
-
-defaultPatchesDir :: IO FilePath
-defaultPatchesDir = do
-  dir <- defaultCabalDir
-  return $ dir </> "patches"
 
 readPackageTarget :: Verbosity
                   -> PackageTarget (PackageLocation FilePath)

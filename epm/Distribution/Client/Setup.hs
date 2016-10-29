@@ -1348,7 +1348,7 @@ installOptions showOrParseArgs =
            installSymlinkBinDir (\v flags -> flags { installSymlinkBinDir = v })
            (reqArgFlag "DIR")
 
-      , option [] ["eta-patches-directory"]
+      , option [] ["patches-directory"]
           "Specify explicit Eta patches directory"
           installEtaPatchesDirectory (\v flags -> flags { installEtaPatchesDirectory = v })
           (reqArgFlag "DIR")

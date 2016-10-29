@@ -1052,7 +1052,7 @@ performInstallations verbosity
     }
     reportingLevel = fromFlag (installBuildReports installFlags)
     logsDir        = fromFlag (globalLogsDir globalFlags)
-    etaPatchesDir = fromFlagOrDefault [] (installEtaPatchesDirectory installFlags)
+    etaPatchesDir = fromFlagOrDefault defaultPatchesDir (toFlag $ return $ fromFlag $ installEtaPatchesDirectory installFlags)
 
     -- Should the build output be written to a log file instead of stdout?
     useLogFile :: UseLogFile
@@ -1235,7 +1235,7 @@ installLocalPackage
   :: Verbosity
   -> JobLimit
   -> PackageIdentifier -> PackageLocation FilePath -> FilePath
-  -> FilePath
+  -> IO FilePath -- ^ Patches directory option
   -> (Maybe FilePath -> IO BuildResult)
   -> IO BuildResult
 installLocalPackage verbosity jobLimit pkgid location distPref patchDir installPkg =
@@ -1263,7 +1263,7 @@ installLocalTarballPackage
   -> JobLimit
   -> PackageIdentifier -> FilePath -> FilePath
   -> (Maybe FilePath -> IO BuildResult)
-  -> FilePath
+  -> IO FilePath
   -> IO BuildResult
 installLocalTarballPackage verbosity jobLimit pkgid
                            tarballPath distPref installPkg patchDir = do
@@ -1277,7 +1277,7 @@ installLocalTarballPackage verbosity jobLimit pkgid
       withJobLimit jobLimit $ do
         info verbosity $ "Extracting " ++ tarballPath
                       ++ " to " ++ tmpDirPath ++ "..."
-        patchedExtractTarGzFile verbosity tmpDirPath relUnpackedPath tarballPath (patchDir' patchDir)
+        patchedExtractTarGzFile verbosity tmpDirPath relUnpackedPath tarballPath patchDir
         exists <- doesFileExist descFilePath
         when (not exists) $
           die $ "Package .cabal file not found: " ++ show descFilePath
@@ -1293,10 +1293,6 @@ installLocalTarballPackage verbosity jobLimit pkgid
     --
     -- TODO: 'cabal get happy && cd sandbox && cabal install ../happy' still
     -- fails even with this workaround. We probably can live with that.
-    patchDir' pd = case pd of
-                     [] -> defaultPatchesDir
-                     _ -> return patchDir
-
     maybeRenameDistDir :: FilePath -> IO ()
     maybeRenameDistDir absUnpackedPath = do
       let distDirPath    = absUnpackedPath </> defaultDistPref

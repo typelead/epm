@@ -45,6 +45,10 @@ module Distribution.Client.Targets (
 
   ) where
 
+import System.Directory
+         ( getAppUserDataDirectory)
+import System.FilePath
+         ( (</>))
 import Distribution.Package
          ( Package(..), PackageName(..)
          , PackageIdentifier(..), packageName, packageVersion
@@ -53,7 +57,6 @@ import Distribution.Client.Types
          ( SourcePackage(..), PackageLocation(..), OptionalStanza(..) )
 import Distribution.Client.Dependency.Types
          ( PackageConstraint(..) )
-
 import qualified Distribution.Client.World as World
 import Distribution.Client.PackageIndex (PackageIndex)
 import qualified Distribution.Client.PackageIndex as PackageIndex
@@ -61,6 +64,7 @@ import qualified Distribution.Client.Tar as Tar
 import Distribution.Client.FetchUtils
 import Distribution.Client.Utils ( tryFindPackageDesc )
 import {-# SOURCE #-} Distribution.Client.Patch ( patchedTarPackageCabalFile )
+import {-# SOURCE #-} Distribution.Client.Config (defaultCabalDir, defaultPatchesDir)
 
 import Distribution.PackageDescription
          ( GenericPackageDescription, FlagName(..), FlagAssignment )
@@ -462,6 +466,7 @@ fetchPackageTarget verbosity target = case target of
 --
 -- This only affects targets given by location, named targets are unaffected.
 --
+
 readPackageTarget :: Verbosity
                   -> PackageTarget (PackageLocation FilePath)
                   -> IO (PackageTarget SourcePackage)
@@ -515,7 +520,7 @@ readPackageTarget verbosity target = case target of
     extractTarballPackageCabalFile :: FilePath -> String
                                    -> IO (FilePath, BS.ByteString)
     extractTarballPackageCabalFile tarballFile tarballOriginalLoc = do
-      maybePatchedCabalFile <- patchedTarPackageCabalFile tarballFile
+      maybePatchedCabalFile <- patchedTarPackageCabalFile tarballFile defaultPatchesDir
       maybe
         ( either (die . formatErr) return
         . check

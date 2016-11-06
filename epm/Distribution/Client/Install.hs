@@ -1052,8 +1052,9 @@ performInstallations verbosity
     }
     reportingLevel = fromFlag (installBuildReports installFlags)
     logsDir        = fromFlag (globalLogsDir globalFlags)
-    etaPatchesDir = fromFlagOrDefault defaultPatchesDir (toFlag $ return $ fromFlag $ installEtaPatchesDirectory installFlags)
-
+    etaPatchesDir = case installEtaPatchesDirectory installFlags of
+                      Cabal.NoFlag -> defaultPatchesDir
+                      Cabal.Flag path -> return path
     -- Should the build output be written to a log file instead of stdout?
     useLogFile :: UseLogFile
     useLogFile = fmap ((\f -> (f, loggingVerbosity)) . substLogFileName)

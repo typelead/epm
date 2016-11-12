@@ -8,6 +8,7 @@ where
 import Distribution.Package        ( PackageIdentifier(..), PackageName(..))
 import Distribution.Simple.Program ( gitProgram, defaultProgramConfiguration
                                    , runProgramInvocation, programInvocation
+                                   , getProgramInvocationOutput
                                    , requireProgramVersion )
 import Distribution.Simple.Utils   ( notice )
 import Distribution.Version        ( Version(..), orLaterVersion )
@@ -73,12 +74,14 @@ patchedExtractTarGzFile verbosity dir expected tar patchesDir' = do
                       gitProgram
                       (orLaterVersion (Version [1,8,5] []))
                       defaultProgramConfiguration
-    let runGit = runProgramInvocation verbosity . programInvocation gitProg
+    let runGit :: [String] -> IO String
+        runGit = getProgramInvocationOutput verbosity . programInvocation gitProg
     let gitDir = dir </> expected
     notice verbosity $ "Found patch in eta-hackage for " ++ expected
-    runGit ["-C", gitDir, "init"]
-    runGit ["-C", gitDir, "apply",
-            "--ignore-space-change", "--ignore-whitespace"
+    _ <- runGit ["-C", gitDir, "init"]
+    _ <- runGit ["-C", gitDir, "apply",
+                 "--ignore-space-change", "--ignore-whitespace"
            , patchFileLocation]
+    return ()
   where packageAndVersion = takeFileName expected
         patchFile = packageAndVersion <.> "patch"

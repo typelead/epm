@@ -1,0 +1,2 @@
+* --patches-directory option added for epm install command
+* patchedExtractTarGzFile function will exit if git command fails

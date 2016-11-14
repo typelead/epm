@@ -1,12 +1,11 @@
-# Cabal [![Build Status](https://secure.travis-ci.org/haskell/cabal.svg?branch=master)](http://travis-ci.org/haskell/cabal)
+# EPM
 
-This Cabal Git repository contains the following packages:
+EPM (Eta Package Manager) is a tool used for creating and building Eta packages. It is based on the [Cabal system](https://www.haskell.org/cabal/users-guide/) from Haskell with minor changes to support Java FFI.
 
- * [Cabal](Cabal/README.md): the Cabal library package ([license](Cabal/LICENSE))
- * [epm](epm/README.md): the package containing the `cabal` tool ([license](epm/LICENSE))
+## Contact Us
 
-See [HACKING.md](HACKING.md) for information about contributing and building
-from git cloned sources.
+If you had trouble with this project, you can give us feedback by:
 
-The canonical upstream repository is located at
-https://github.com/haskell/cabal.
+- filing an [issue](https://github.com/typelead/epm/issues/new)
+
+- discussing with us on [Gitter](https://gitter.im/typelead/eta) 

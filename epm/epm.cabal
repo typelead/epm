@@ -24,7 +24,7 @@ Category:           Distribution
 Build-type:         Simple
 Cabal-Version:      >= 1.10
 Extra-Source-Files:
-  README.md bash-completion/cabal bootstrap.sh changelog
+  README.md bash-completion/epm changelog
 
   -- Generated with '../Cabal/misc/gen-extra-source-files.sh | sort'
   tests/PackageTests/Freeze/my.cabal

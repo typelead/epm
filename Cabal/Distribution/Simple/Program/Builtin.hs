@@ -55,13 +55,14 @@ import Distribution.Simple.Program.Find
 import Distribution.Simple.Program.Run
          ( getProgramInvocationOutput, programInvocation )
 import Distribution.Simple.Program.Types
-         ( Program(..), ConfiguredProgram(..), simpleProgram )
+         ( Program(..), ConfiguredProgram(..), ProgramSearchPath
+         , ProgramSearchPathEntry(..), simpleProgram )
 import Distribution.Simple.Utils
          ( findProgramVersion )
 import Distribution.Compat.Exception
          ( catchIO )
 import Distribution.Verbosity
-         ( lessVerbose )
+         ( Verbosity, lessVerbose )
 import Distribution.Version
          ( Version(..), withinRange, earlierVersion, laterVersion
          , intersectVersionRanges )
@@ -71,6 +72,10 @@ import Data.Char
 import Data.List
          ( isInfixOf )
 import qualified Data.Map as Map
+import System.Environment
+         ( lookupEnv )
+import System.FilePath
+         ( (</>) )
 
 -- ------------------------------------------------------------
 -- * Known programs
@@ -174,9 +179,25 @@ etaProgram = (simpleProgram "eta") {
 -- TODO: Clean this up
 underscoreToDot = map (\c -> if c == '_' then '.' else c)
 
+findProgramInJavaHomeOrSearchPath :: String
+                                  -> Verbosity
+                                  -> ProgramSearchPath
+                                  -> IO (Maybe FilePath)
+findProgramInJavaHomeOrSearchPath name verbosity searchPath = do
+  mJavaHome <- lookupEnv "JAVA_HOME"
+  case mJavaHome of
+    Just javaHome ->
+      let
+        bin         = javaHome </> "bin"
+        searchPath' = ProgramSearchPathDir bin : searchPath
+      in findProgramOnSearchPath verbosity searchPath' name
+    Nothing ->
+      findProgramOnSearchPath verbosity searchPath name
+
 javaProgram :: Program
 javaProgram = (simpleProgram "java") {
-    programFindVersion = findProgramVersion "-version" $ \str ->
+    programFindLocation = \v p -> findProgramInJavaHomeOrSearchPath "java" v p
+  , programFindVersion = findProgramVersion "-version" $ \str ->
         -- Invoking "java -version" gives a string like
         -- "java version \"1.7.0_79\""
         case lines str of
@@ -187,7 +208,8 @@ javaProgram = (simpleProgram "java") {
 
 javacProgram :: Program
 javacProgram = (simpleProgram "javac") {
-    programFindVersion = findProgramVersion "-version" $ \str ->
+    programFindLocation = \v p -> findProgramInJavaHomeOrSearchPath "javac" v p
+  , programFindVersion = findProgramVersion "-version" $ \str ->
         -- Invoking "javac -version" gives a string like
         -- "javac 1.7.0_79"
         case words str of

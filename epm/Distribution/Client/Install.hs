@@ -146,7 +146,7 @@ import Distribution.Simple.Utils as Utils
          ( notice, info, warn, debug, debugNoWrap, die
          , intercalate, withTempDirectory )
 import Distribution.Client.Utils
-         ( determineNumJobs, inDir, mergeBy, MergeResult(..)
+         ( determineNumJobs', inDir, mergeBy, MergeResult(..)
          , tryCanonicalizePath )
 import Distribution.System
          ( Platform, OS(Windows), buildOS )
@@ -993,9 +993,15 @@ performInstallations verbosity
     when parallelInstall $
       notice verbosity $ "Notice: installing into a sandbox located at "
                          ++ sandboxDir
-
-  jobControl   <- if parallelInstall then newParallelJobControl
-                                     else newSerialJobControl
+  
+  -- Enable parallelInstall after Cabal get's compiled with Eta and
+  -- Eta get's support for parallelism. See the notes in SetupWrapper for
+  -- setup cache exe to find the reason.
+  -- jobControl   <- if parallelInstall then newParallelJobControl numJobs
+  --                                    else newSerialJobControl
+  when parallelInstall $
+       notice verbosity $ "Warning: Parallel builds are currently not supported, using serial build."
+  jobControl   <- newSerialJobControl
   buildLimit   <- newJobLimit numJobs
   fetchLimit   <- newJobLimit (min numJobs numFetchJobs)
   installLock  <- newLock -- serialise installation
@@ -1018,8 +1024,7 @@ performInstallations verbosity
   where
     platform = InstallPlan.planPlatform installPlan
     cinfo    = InstallPlan.planCompiler installPlan
-
-    numJobs         = determineNumJobs (installNumJobs installFlags)
+    numJobs         = determineNumJobs' (installNumJobs installFlags)
     numFetchJobs    = 2
     parallelInstall = numJobs >= 2
     distPref        = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
@@ -1336,7 +1341,6 @@ installUnpackedPackage verbosity buildLimit installLock numJobs pkg_key
                        scriptOptions miscOptions
                        configFlags installFlags haddockFlags
                        cinfo platform pkg pkgoverride workingDir useLogFile = do
-
   -- Override the .cabal file if necessary
   case pkgoverride of
     Nothing     -> return ()

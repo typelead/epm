@@ -993,7 +993,7 @@ performInstallations verbosity
     when parallelInstall $
       notice verbosity $ "Notice: installing into a sandbox located at "
                          ++ sandboxDir
-  
+
   -- Enable parallelInstall after Cabal get's compiled with Eta and
   -- Eta get's support for parallelism. See the notes in SetupWrapper for
   -- setup cache exe to find the reason.
@@ -1025,7 +1025,7 @@ performInstallations verbosity
     platform = InstallPlan.planPlatform installPlan
     cinfo    = InstallPlan.planCompiler installPlan
     numJobs         = determineNumJobs' (installNumJobs installFlags)
-    numFetchJobs    = 2
+    numFetchJobs    = 1 -- 2 Change after parallel build is enabled
     parallelInstall = numJobs >= 2
     distPref        = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
                       (configDistPref configFlags)

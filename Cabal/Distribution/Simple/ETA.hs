@@ -397,7 +397,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                          ++ "DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"\n"
                          ++ "java -classpath \"$DIR/" ++ exeNameReal
                          ++ (if null classPaths then "" else ':' : intercalate ":" classPaths)
-                         ++ "\" eta.main\n"
+                         ++ "\" eta.main \"$@\"\n"
       scriptFile = targetDir </> (exeNameReal -<.> "sh")
   writeUTF8File scriptFile generateExeScript
   p <- getPermissions scriptFile

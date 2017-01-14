@@ -200,10 +200,11 @@ javaProgram = (simpleProgram "java") {
   , programFindVersion = findProgramVersion "-version" $ \str ->
         -- Invoking "java -version" gives a string like
         -- "java version \"1.7.0_79\""
-        case lines str of
+        case filter (isInfixOf "version") (lines str) of
           (l:_)
-            | (_:_:quotedVersion:_) <- words l -> underscoreToDot $ drop 1 (init quotedVersion)
-          _ -> ""
+            | (_:_:quotedVersion:_) <- words l ->
+              underscoreToDot $ drop 1 (init quotedVersion)
+          _ -> error $ "Invalid java version"
   }
 
 javacProgram :: Program
@@ -212,9 +213,10 @@ javacProgram = (simpleProgram "javac") {
   , programFindVersion = findProgramVersion "-version" $ \str ->
         -- Invoking "javac -version" gives a string like
         -- "javac 1.7.0_79"
-        case words str of
-          (_:version:_) -> underscoreToDot version
-          _             -> ""
+        case filter (isInfixOf "javac") (lines str) of
+          (l:_)
+            | (_:version:_) <- words str -> underscoreToDot version
+          _             -> error $ "Invalid javac version"
   }
 
 gitProgram :: Program

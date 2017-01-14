@@ -1283,7 +1283,7 @@ installLocalTarballPackage verbosity jobLimit pkgid
       withJobLimit jobLimit $ do
         info verbosity $ "Extracting " ++ tarballPath
                       ++ " to " ++ tmpDirPath ++ "..."
-        patchedExtractTarGzFile verbosity tmpDirPath relUnpackedPath tarballPath patchDir
+        patchedExtractTarGzFile verbosity False tmpDirPath relUnpackedPath tarballPath patchDir
         exists <- doesFileExist descFilePath
         when (not exists) $
           die $ "Package .cabal file not found: " ++ show descFilePath

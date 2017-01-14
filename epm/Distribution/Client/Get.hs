@@ -170,7 +170,7 @@ unpackPackage verbosity prefix pkgid descOverride pkgPath = do
     when existsFile $ die $
      "A file \"" ++ pkgdir ++ "\" is in the way, not unpacking."
     notice verbosity $ "Unpacking to " ++ pkgdir'
-    patchedExtractTarGzFile verbosity prefix pkgdirname pkgPath defaultPatchesDir
+    patchedExtractTarGzFile verbosity True prefix pkgdirname pkgPath defaultPatchesDir
 
     case descOverride of
       Nothing     -> return ()

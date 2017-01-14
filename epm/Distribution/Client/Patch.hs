@@ -57,13 +57,14 @@ findCabalFilePatch cabalFile patchesDir' = do
   then fmap Just $ BS.readFile cabalPatchLocation
   else return Nothing
 
-patchedExtractTarGzFile :: Verbosity 
+patchedExtractTarGzFile :: Verbosity
+                        -> Bool     -- ^ Setup for patching?
                         -> FilePath -- ^ Destination directory of tar.gz file
                         -> FilePath -- ^ Expected subdir (to check for tarbombs)
                         -> FilePath -- ^ Tarball
                         -> IO FilePath -- ^ Filepath of the patches directory
                         -> IO ()
-patchedExtractTarGzFile verbosity dir expected tar patchesDir' = do
+patchedExtractTarGzFile verbosity setupForPatch dir expected tar patchesDir' = do
   patchesDir <- patchesDir'
   -- TODO: Speed this up with a cache?
   let patchFileLocation = patchesDir </> "patches" </> patchFile
@@ -79,9 +80,16 @@ patchedExtractTarGzFile verbosity dir expected tar patchesDir' = do
     let gitDir = dir </> expected
     notice verbosity $ "Found patch in eta-hackage for " ++ expected
     _ <- runGit ["-C", gitDir, "init"]
+    when setupForPatch $ do
+      _ <- runGit ["-C", gitDir, "add", "."]
+      runGit ["-C", gitDir, "commit", "-m", "First"]
+      return ()
     _ <- runGit ["-C", gitDir, "apply",
                  "--ignore-space-change", "--ignore-whitespace"
            , patchFileLocation]
+    when setupForPatch $ do
+      runGit ["-C", gitDir, "add", "."]
+      return ()
     return ()
   where packageAndVersion = takeFileName expected
         patchFile = packageAndVersion <.> "patch"

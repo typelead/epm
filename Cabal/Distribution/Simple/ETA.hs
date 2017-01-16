@@ -37,6 +37,7 @@ import qualified Distribution.Simple.Hpc as Hpc
 import Distribution.Simple.InstallDirs hiding ( absoluteInstallDirs )
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
+import Distribution.Simple.Program.Run (programInvocation)
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), ProgramConfiguration
          , ProgramSearchPath
@@ -49,7 +50,7 @@ import Distribution.Simple.Program
          , lookupProgram, addKnownPrograms
          , etaProgram, etaPkgProgram, c2hsProgram, hsc2hsProgram
          , ldProgram, haddockProgram, stripProgram
-         , javaProgram, javacProgram )
+         , javaProgram, javacProgram, coursierProgram )
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import qualified Distribution.Simple.Program.Ar    as Ar
 import qualified Distribution.Simple.Program.Ld    as Ld
@@ -155,7 +156,8 @@ configure verbosity hcPath hcPkgPath conf0 = do
       compPlatform = Nothing -- Internal.targetPlatform ghcInfo
   (_, conf4) <- requireProgram verbosity javaProgram conf3
   (_, conf5) <- requireProgram verbosity javacProgram conf4
-  return (comp, compPlatform, conf5)
+  (_, conf6) <- requireProgram verbosity coursierProgram conf5
+  return (comp, compPlatform, conf6)
 
 etaNativeToo :: Compiler -> Bool
 etaNativeToo = Internal.ghcLookupProperty "Native Too"
@@ -370,13 +372,27 @@ buildOrReplExe :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
 buildOrReplExe forRepl verbosity numJobs pkgDescr lbi
   exe@Executable { exeName = exeName', modulePath = modPath } clbi = do
 
-  (etaProg, _) <- requireProgram verbosity etaProgram (withPrograms lbi)
+  (etaProg, _)      <- requireProgram verbosity etaProgram (withPrograms lbi)
+  (coursierProg, _) <- requireProgram verbosity coursierProgram (withPrograms lbi)
   let runEtaProg = runGHC verbosity etaProg comp
+      runCoursier options = getProgramInvocationOutput verbosity
+                              (programInvocation coursierProg options)
 
   createDirectoryIfMissingVerbose verbosity True exeDir
 
   srcMainFile <- findFile (hsSourceDirs exeBi) modPath
-  let baseOpts = (componentGhcOptions verbosity lbi exeBi clbi exeDir)
+
+  (depJars, mavenDeps') <- getDependencyClassPaths (installedPkgs lbi)
+                            pkgDescr lbi clbi
+
+  let mavenDeps = mavenDeps' ++ (extraLibs . buildInfo $ exe)
+  mavenOutput <- runCoursier $ "fetch" : mavenDeps
+
+  let mavenPaths = dropWhile ((/= '/') . head) $ lines mavenOutput
+      javaSrcs = (if isShared
+                  then []
+                  else mavenPaths) ++ javaSrcs'
+      baseOpts = (componentGhcOptions verbosity lbi exeBi clbi exeDir)
                  `mappend` mempty {
                    ghcOptMode         = toFlag GhcModeMake,
                    ghcOptInputFiles   = toNubListR $ srcMainFile : javaSrcs,
@@ -385,16 +401,13 @@ buildOrReplExe forRepl verbosity numJobs pkgDescr lbi
                    ghcOptOutputFile   = toFlag exeJar,
                    ghcOptShared       = toFlag isShared
                  }
+  putStrLn mavenOutput
+  print mavenPaths
 
   runEtaProg baseOpts
   -- Generate .sh file
-  classPaths' <- if isShared
-                then getDependencyClassPaths
-                      (installedPkgs lbi)
-                      clbi
-                      lbi
-                else return []
-  let classPaths = (if null javaSrcs
+  let classPaths' = if isShared then depJars ++ mavenPaths else []
+      classPaths = (if null javaSrcs
                     then []
                     else ["$DIR/" ++ exeName' ++ "-tmp/__extras.jar"])
                     ++ classPaths'
@@ -417,7 +430,7 @@ buildOrReplExe forRepl verbosity numJobs pkgDescr lbi
                                     then jarExtension
                                     else "")
         isShared = withDynExe lbi
-        javaSrcs = javaSources exeBi
+        javaSrcs' = javaSources exeBi
         targetDir = buildDir lbi </> exeName'
         exeDir    = targetDir </> (exeName' ++ "-tmp")
         exeJar    = targetDir </> exeNameReal
@@ -584,16 +597,21 @@ jarExtension = "jar"
 
 getDependencyClassPaths
   :: InstalledPackageIndex
-  -> ComponentLocalBuildInfo
+  -> PackageDescription
   -> LocalBuildInfo
-  -> IO [FilePath]
-getDependencyClassPaths packageIndex clbi lbi = do
+  -> ComponentLocalBuildInfo
+  -> IO ([FilePath], [String])
+getDependencyClassPaths packageIndex pkgDescr lbi clbi = do
   libs <- fmap concat $ mapM hsLibraryPaths packageInfos
-  return $ libPaths ++ libs
-  where packages' = map fst $ componentPackageDeps clbi
+  return (libPaths ++ libs, libMavenDeps ++ mavenDeps)
+  where mavenDeps = concatMap InstalledPackageInfo.extraLibraries packageInfos
+        packages' = map fst $ componentPackageDeps clbi
         (libs, packages'') = partition (isInfixOf "-inplace" . show) packages'
         libPaths = if null libs then [] else ["$DIR/../"
                                               ++ mkJarName (fromJust mbLibName)]
+        libMavenDeps = if null libs
+                       then []
+                       else extraLibs . libBuildInfo . fromJust $ library pkgDescr
         (mbLibName, libDeps) =
           if null libs
           then (Nothing, [])

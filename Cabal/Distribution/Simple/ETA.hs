@@ -386,9 +386,13 @@ buildOrReplExe forRepl verbosity numJobs pkgDescr lbi
                             pkgDescr lbi clbi
 
   let mavenDeps = mavenDeps' ++ (extraLibs . buildInfo $ exe)
-  mavenOutput <- runCoursier $ "fetch" : mavenDeps
+  maybeMavenOutput <- if null mavenDeps
+                      then return Nothing
+                      else fmap Just (runCoursier $ "fetch" : mavenDeps)
 
-  let mavenPaths = dropWhile ((/= '/') . head) $ lines mavenOutput
+  let mavenPaths = case maybeMavenOutput of
+        Just mavenOutput -> dropWhile ((/= '/') . head) $ lines mavenOutput
+        Nothing          -> []
       javaSrcs = (if isShared
                   then []
                   else mavenPaths) ++ javaSrcs'

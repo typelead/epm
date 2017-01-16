@@ -460,6 +460,11 @@ configureOptions showOrParseArgs =
          configDynExe (\v flags -> flags { configDynExe = v })
          (boolOpt [] [])
 
+      ,option "" ["uberjar-mode"]
+         "Build an standalone jar (uberjar)."
+         (fmap not . configDynExe) (\v flags -> flags { configDynExe = fmap not v })
+         (boolOpt [] [])
+
       ,option "" ["profiling"]
          "Executable profiling (requires library profiling)"
          -- HACK: See #2409. Thankfully, this is 1.22-specific.

@@ -24,6 +24,7 @@ module Distribution.Simple.Program.Builtin (
     javaProgram,
     javacProgram,
     gitProgram,
+    coursierProgram,
     etaPkgProgram,
     lhcProgram,
     lhcPkgProgram,
@@ -118,10 +119,11 @@ builtinPrograms =
     , tarProgram
     -- configuration tools
     , pkgConfigProgram
-    -- ETA-specific tools
+    -- Eta-specific tools
     , javaProgram
     , javacProgram
     , gitProgram
+    , coursierProgram
     ]
 
 ghcProgram :: Program
@@ -218,6 +220,21 @@ javacProgram = (simpleProgram "javac") {
             | (_:version:_) <- words str -> underscoreToDot version
           _             -> error $ "Invalid javac version"
   }
+
+coursierProgram :: Program
+coursierProgram = (simpleProgram "coursier") {
+    programFindLocation = \v p -> findProgramInJavaHomeOrSearchPath "coursier" v p
+  , programFindVersion = findProgramVersion "--help" $ \str ->
+        -- Invoking "coursier --help" gives a string like
+        -- "Coursier 1.0.0-M15"
+        -- TODO: We may need to make this more robust.
+        case filter (isInfixOf "Coursier") (lines str) of
+          (l:_)
+            | (_:version:_) <- words str -> removeM version
+          _             -> error $ "Invalid javac version"
+  }
+  where removeM version = start ++ "." ++ drop 2 end
+          where (start, end) = break (== '-') version
 
 gitProgram :: Program
 gitProgram = (simpleProgram "git") {

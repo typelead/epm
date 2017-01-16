@@ -99,6 +99,7 @@ module Distribution.Simple.Program (
     , javaProgram
     , javacProgram
     , gitProgram
+    , coursierProgram
     , lhcProgram
     , lhcPkgProgram
     , hmakeProgram

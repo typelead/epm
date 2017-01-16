@@ -73,7 +73,7 @@ run verbosity lbi exe exeArgs = do
     case compilerFlavor (compiler lbi) of
       ETA -> do
          p <- tryCanonicalizePath $
-            buildPref </> exeName exe </> (exeName exe <.> "sh")
+            buildPref </> exeName exe </> exeName exe
          return (p, [])
       GHCJS -> do
         let (script, cmd, cmdArgs) =

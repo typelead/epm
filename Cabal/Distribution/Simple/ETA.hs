@@ -32,7 +32,7 @@ import Distribution.Simple.PackageIndex ( InstalledPackageIndex, lookupInstalled
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
-         , LibraryName(..) )
+         , LibraryName(..), ComponentName(..) )
 import qualified Distribution.Simple.Hpc as Hpc
 import Distribution.Simple.InstallDirs hiding ( absoluteInstallDirs )
 import Distribution.Simple.BuildPaths
@@ -65,7 +65,7 @@ import Distribution.Simple.Compiler
 import Distribution.Version
          ( Version(..), anyVersion, orLaterVersion )
 import Distribution.System
-         ( Platform(..) )
+         ( Platform(..), OS(..) )
 import Distribution.Verbosity
 import Distribution.Utils.NubList
          ( overNubListR, toNubListR )
@@ -75,7 +75,8 @@ import Language.Haskell.Extension ( Extension(..)
 
 import Control.Monad            ( unless, when )
 import Data.Char                ( isSpace )
-import Data.Maybe               ( catMaybes )
+import Data.List                ( partition, find )
+import Data.Maybe               ( catMaybes, fromJust )
 import Data.Version             ( makeVersion )
 import qualified Data.Map as M  ( fromList  )
 #if __GLASGOW_HASKELL__ < 710
@@ -366,7 +367,7 @@ replExe  = buildOrReplExe True
 buildOrReplExe :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
                -> PackageDescription -> LocalBuildInfo
                -> Executable         -> ComponentLocalBuildInfo -> IO ()
-buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
+buildOrReplExe forRepl verbosity numJobs pkgDescr lbi
   exe@Executable { exeName = exeName', modulePath = modPath } clbi = do
 
   (etaProg, _) <- requireProgram verbosity etaProgram (withPrograms lbi)
@@ -389,16 +390,23 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
   -- Generate .sh file
   classPaths' <- if isShared
                 then getDependencyClassPaths
-                     (installedPkgs lbi)
-                     (map fst $ componentPackageDeps clbi)
+                      (installedPkgs lbi)
+                      clbi
+                      lbi
                 else return []
-  let classPaths = classPaths'
+  let classPaths = (if null javaSrcs
+                    then []
+                    else ["$DIR/" ++ exeName' ++ "-tmp/__extras.jar"])
+                    ++ classPaths'
       generateExeScript = "#!/usr/bin/env bash\n"
                          ++ "DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"\n"
                          ++ "java -classpath \"$DIR/" ++ exeNameReal
-                         ++ (if null classPaths then "" else ':' : intercalate ":" classPaths)
+                         ++ (if null classPaths
+                             then ""
+                             else classPathSep : intercalate [classPathSep]
+                                                   classPaths)
                          ++ "\" eta.main \"$@\"\n"
-      scriptFile = targetDir </> (exeNameReal -<.> "sh")
+      scriptFile = targetDir </> exeName'
   writeUTF8File scriptFile generateExeScript
   p <- getPermissions scriptFile
   setPermissions scriptFile (p {executable = True})
@@ -413,6 +421,10 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
         targetDir = buildDir lbi </> exeName'
         exeDir    = targetDir </> (exeName' ++ "-tmp")
         exeJar    = targetDir </> exeNameReal
+        isWindows
+          | Platform _ Windows <- hostPlatform lbi = True
+          | otherwise = False
+        classPathSep = if isWindows then ';' else ':'
 
 -- |Install for ghc, .hi, .a and, if --with-ghci given, .o
 installLib    :: Verbosity
@@ -570,9 +582,37 @@ etaGhcVersion = makeVersion [7,10,3]
 jarExtension :: String
 jarExtension = "jar"
 
-getDependencyClassPaths :: InstalledPackageIndex -> [InstalledPackageId] -> IO [FilePath]
-getDependencyClassPaths packageIndex packages = fmap concat $ mapM hsLibraryPaths packageInfos
-  where Left closurePackageIndex = dependencyClosure packageIndex packages
+getDependencyClassPaths
+  :: InstalledPackageIndex
+  -> ComponentLocalBuildInfo
+  -> LocalBuildInfo
+  -> IO [FilePath]
+getDependencyClassPaths packageIndex clbi lbi = do
+  libs <- fmap concat $ mapM hsLibraryPaths packageInfos
+  return $ libPaths ++ libs
+  where packages' = map fst $ componentPackageDeps clbi
+        (libs, packages'') = partition (isInfixOf "-inplace" . show) packages'
+        libPaths = if null libs then [] else ["$DIR/../"
+                                              ++ mkJarName (fromJust mbLibName)]
+        (mbLibName, libDeps) =
+          if null libs
+          then (Nothing, [])
+          else (\(_, clbi, _) ->
+                  case componentLibraries clbi of
+                    [libName] -> ( Just libName
+                                 , map fst $ componentPackageDeps clbi )
+                    [] -> error "No library name found when building library"
+                    _  -> error "Multiple library names found when building library")
+             . fromJust
+             . find (\(cn,_,_) -> cn == CLibName)
+             $ componentsConfigs lbi
+
+        packages = libDeps ++ packages''
+
+        closurePackageIndex = case dependencyClosure packageIndex packages of
+          Left pkgIdx -> pkgIdx
+          Right errs -> error $ show ("deps error", errs)
+
         packageInfos = allPackages closurePackageIndex
         hsLibraryPaths pi = mapM (findFile (libraryDirs pi))
                                  (map (<.> "jar") $ hsLibraries pi)

@@ -496,10 +496,12 @@ installExe verbosity lbi installDirs buildPref
       toDir x = binDir </> x
       buildDir = buildPref </> exeName exe
       fromDir x = buildDir </> x
-      exeNameExt ext = exeName exe <.> ext
+      exeNameExt ext = if null ext
+                       then exeName exe
+                       else exeName exe <.> ext
       copy x = copyFile (fromDir x) (toDir x)
   createDirectoryIfMissingVerbose verbosity True binDir
-  copy (exeNameExt "sh")
+  copy (exeNameExt "")
   copy (exeNameExt "jar")
   --copyFile (fromDir (exeNameExt "jar")) (toDir (progprefix ++ exeName exe ++ progsuffix))
 

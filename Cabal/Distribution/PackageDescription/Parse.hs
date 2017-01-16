@@ -429,6 +429,9 @@ binfoFieldDescrs =
  , listFieldWithSep vcat "java-sources"
            showFilePath       parseFilePathQ
            javaSources        (\paths binfo -> binfo{javaSources=paths})
+ , commaListFieldWithSep vcat "maven-depends"
+           showToken          parseTokenQ
+           extraLibs          (\xs    binfo -> binfo{extraLibs=xs})
  , simpleField "default-language"
            (maybe empty disp) (option Nothing (fmap Just parseLanguageQ))
            defaultLanguage    (\lang  binfo -> binfo{defaultLanguage=lang})

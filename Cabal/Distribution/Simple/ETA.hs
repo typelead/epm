@@ -401,15 +401,13 @@ buildOrReplExe forRepl verbosity numJobs pkgDescr lbi
                    ghcOptOutputFile   = toFlag exeJar,
                    ghcOptShared       = toFlag isShared
                  }
-  putStrLn mavenOutput
-  print mavenPaths
 
   runEtaProg baseOpts
   -- Generate .sh file
   let classPaths' = if isShared then depJars ++ mavenPaths else []
-      classPaths = (if null javaSrcs
-                    then []
-                    else ["$DIR/" ++ exeName' ++ "-tmp/__extras.jar"])
+      classPaths = (if isShared && not (null javaSrcs)
+                    then ["$DIR/" ++ exeName' ++ "-tmp/__extras.jar"]
+                    else [])
                     ++ classPaths'
       generateExeScript = "#!/usr/bin/env bash\n"
                          ++ "DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"\n"

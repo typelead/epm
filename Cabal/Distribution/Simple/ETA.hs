@@ -76,7 +76,7 @@ import Language.Haskell.Extension ( Extension(..)
 
 import Control.Monad            ( unless, when )
 import Data.Char                ( isSpace )
-import Data.List                ( partition, find )
+import Data.List                ( partition, find, isPrefixOf, lookup )
 import Data.Maybe               ( catMaybes, fromJust )
 import Data.Version             ( makeVersion )
 import qualified Data.Map as M  ( fromList  )
@@ -386,9 +386,14 @@ buildOrReplExe forRepl verbosity numJobs pkgDescr lbi
                             pkgDescr lbi clbi
 
   let mavenDeps = mavenDeps' ++ (extraLibs . buildInfo $ exe)
+      mavenRepos = frameworks . buildInfo $ exe
+      mavenResolvedRepos = concatMap (\r -> ["-r", r]) $ map resolveOrId mavenRepos
+
   maybeMavenOutput <- if null mavenDeps
                       then return Nothing
-                      else fmap Just (runCoursier $ "fetch" : mavenDeps)
+                      else fmap Just (runCoursier $ "fetch"
+                                                  : (mavenResolvedRepos ++
+                                                     mavenDeps))
 
   let mavenPaths = case maybeMavenOutput of
         Just mavenOutput -> dropWhile ((/= '/') . head) $ lines mavenOutput
@@ -638,3 +643,22 @@ getDependencyClassPaths packageIndex pkgDescr lbi clbi = do
         packageInfos = allPackages closurePackageIndex
         hsLibraryPaths pi = mapM (findFile (libraryDirs pi))
                                  (map (<.> "jar") $ hsLibraries pi)
+
+builtInMavenResolvers :: [(String, String)]
+builtInMavenResolvers =
+  [ ("central", "https://repo1.maven.org/maven2/")
+  , ("javaNet1", "http://download.java.net/maven/1/")
+  , ("sonatype:public", "https://oss.sonatype.org/content/repositories/public")
+  , ("sonatype:snapshots", "https://oss.sonatype.org/content/repositories/snapshots")
+  , ("sonatype:releases", "https://oss.sonatype.org/content/repositories/releases")  , ("jcenter", "https://jcenter.bintray.com/") ]
+
+resolveOrId :: String -> String
+resolveOrId repo
+  | Just resolved <- lookup repo builtInMavenResolvers
+  = resolved
+  | "bintray" `isPrefixOf` repo
+  = let (_, rest) = break (== ':') repo
+        (owner, repos') = break (== ':') $ drop 1 rest
+        repos = drop 1 repos'
+    in "https://dl.bintray.com/" ++ owner ++ "/" ++ repos ++ "/"
+  | otherwise = repo

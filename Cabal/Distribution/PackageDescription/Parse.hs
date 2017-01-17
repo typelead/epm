@@ -420,6 +420,9 @@ binfoFieldDescrs =
  , listField "frameworks"
            showToken          parseTokenQ
            frameworks         (\val binfo -> binfo{frameworks=val})
+ , listFieldWithSep vcat "maven-repos"
+           showToken          parseTokenQ
+           frameworks          (\paths binfo -> binfo{frameworks=paths})
  , listFieldWithSep vcat "c-sources"
            showFilePath       parseFilePathQ
            cSources           (\paths binfo -> binfo{cSources=paths})

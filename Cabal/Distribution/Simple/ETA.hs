@@ -156,7 +156,7 @@ configure verbosity hcPath hcPkgPath conf0 = do
       compPlatform = Nothing -- Internal.targetPlatform ghcInfo
   (_, conf4) <- requireProgram verbosity javaProgram conf3
   (_, conf5) <- requireProgram verbosity javacProgram conf4
-  return (comp, compPlatform, conf6)
+  return (comp, compPlatform, conf5)
 
 etaNativeToo :: Compiler -> Bool
 etaNativeToo = Internal.ghcLookupProperty "Native Too"

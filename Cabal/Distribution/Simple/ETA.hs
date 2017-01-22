@@ -299,7 +299,7 @@ replLib  = buildOrReplLib True
 buildOrReplLib :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
                -> PackageDescription -> LocalBuildInfo
                -> Library            -> ComponentLocalBuildInfo -> IO ()
-buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
+buildOrReplLib forRepl verbosity numJobs pkgDescr lbi lib clbi = do
   libName <- case componentLibraries clbi of
              [libName] -> return libName
              [] -> die "No library name found when building library"
@@ -313,8 +313,30 @@ buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
                        (instantiatedWith lbi)
 
   (etaProg, _) <- requireProgram verbosity etaProgram (withPrograms lbi)
-  let runEtaProg        = runGHC verbosity etaProg comp
+  (coursierProg, _) <- requireProgram verbosity coursierProgram (withPrograms lbi)
+  let runEtaProg          = runGHC verbosity etaProg comp
       libBi               = libBuildInfo lib
+      runCoursier options = getProgramInvocationOutput verbosity
+                              (programInvocation coursierProg options)
+
+  (depJars, mavenDeps') <- getDependencyClassPaths (installedPkgs lbi)
+                            pkgDescr lbi clbi
+
+  let mavenDeps = mavenDeps' ++ extraLibs libBi
+      mavenRepos = frameworks libBi
+      mavenResolvedRepos = concatMap (\r -> ["-r", r]) $ map resolveOrId mavenRepos
+
+  maybeMavenOutput <- if null mavenDeps
+                      then return Nothing
+                      else fmap Just (runCoursier $ "fetch"
+                                                  : (mavenResolvedRepos ++
+                                                     mavenDeps))
+
+  let mavenPaths = case maybeMavenOutput of
+        Just mavenOutput -> dropWhile ((/= '/') . head) $ lines mavenOutput
+        Nothing          -> []
+
+      fullClassPath = depJars ++ mavenPaths
 
   createDirectoryIfMissingVerbose verbosity True libTargetDir
   -- TODO: do we need to put hs-boot files into place for mutually recursive
@@ -322,7 +344,10 @@ buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
   let javaSrcs    = javaSources libBi
       baseOpts    = componentGhcOptions verbosity lbi libBi clbi libTargetDir
       linkJavaLibOpts = mempty {
-                          ghcOptInputFiles = toNubListR javaSrcs
+                          ghcOptInputFiles = toNubListR javaSrcs,
+                          ghcOptExtra        = toNubListR $ ["-cp",
+                                                             intercalate ":"
+                                                             fullClassPath]
                       }
       vanillaOptsNoJavaLib = baseOpts `mappend` mempty {
                       ghcOptMode         = toFlag GhcModeMake,
@@ -400,6 +425,12 @@ buildOrReplExe forRepl verbosity numJobs pkgDescr lbi
       javaSrcs = (if isShared
                   then []
                   else mavenPaths) ++ javaSrcs'
+      fullClassPath = depJars ++ mavenPaths
+      classPaths' = if isShared then fullClassPath else []
+      classPaths = (if isShared && not (null javaSrcs)
+                    then ["$DIR/" ++ exeName' ++ "-tmp/__extras.jar"]
+                    else [])
+                    ++ classPaths'
       baseOpts = (componentGhcOptions verbosity lbi exeBi clbi exeDir)
                  `mappend` mempty {
                    ghcOptMode         = toFlag GhcModeMake,
@@ -407,17 +438,15 @@ buildOrReplExe forRepl verbosity numJobs pkgDescr lbi
                    ghcOptInputModules = toNubListR $ exeModules exe,
                    ghcOptNumJobs      = numJobs,
                    ghcOptOutputFile   = toFlag exeJar,
-                   ghcOptShared       = toFlag isShared
+                   ghcOptShared       = toFlag isShared,
+                   ghcOptExtra        = toNubListR $ ["-cp",
+                                                      intercalate ":"
+                                                      fullClassPath]
                  }
 
   runEtaProg baseOpts
   -- Generate .sh file
-  let classPaths' = if isShared then depJars ++ mavenPaths else []
-      classPaths = (if isShared && not (null javaSrcs)
-                    then ["$DIR/" ++ exeName' ++ "-tmp/__extras.jar"]
-                    else [])
-                    ++ classPaths'
-      generateExeScript = "#!/usr/bin/env bash\n"
+  let generateExeScript = "#!/usr/bin/env bash\n"
                          ++ "DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"\n"
                          ++ "java -classpath \"$DIR/" ++ exeNameReal
                          ++ (if null classPaths

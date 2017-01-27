@@ -83,8 +83,10 @@ import qualified Data.Map as M  ( fromList  )
 #if __GLASGOW_HASKELL__ < 710
 import Data.Monoid              ( Monoid(..) )
 #endif
-import System.Directory         ( doesFileExist, copyFile, setPermissions, getPermissions,
-                                  executable )
+import System.Directory         ( doesFileExist, copyFile, setPermissions
+                                , getPermissions
+                                , getAppUserDataDirectory
+                                , executable )
 import System.FilePath          ( (</>), (<.>), (-<.>), takeExtension,
                                   takeDirectory, replaceExtension,
                                   splitExtension )
@@ -313,11 +315,14 @@ buildOrReplLib forRepl verbosity numJobs pkgDescr lbi lib clbi = do
                        (instantiatedWith lbi)
 
   (etaProg, _) <- requireProgram verbosity etaProgram (withPrograms lbi)
-  (coursierProg, _) <- requireProgram verbosity coursierProgram (withPrograms lbi)
+  -- TODO: Find a way to not hardcode this.
+  coursierPath  <- fmap (\x -> x </> "coursier") $ getAppUserDataDirectory "epm"
+  (javaProg, _) <- requireProgram verbosity javaProgram (withPrograms lbi)
   let runEtaProg          = runGHC verbosity etaProg comp
       libBi               = libBuildInfo lib
       runCoursier options = getProgramInvocationOutput verbosity
-                              (programInvocation coursierProg options)
+                              (programInvocation javaProg $
+                               (["-jar", "-noverify", coursierPath] ++ options))
 
   (depJars, mavenDeps') <- getDependencyClassPaths (installedPkgs lbi)
                             pkgDescr lbi clbi
@@ -396,11 +401,13 @@ buildOrReplExe :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
 buildOrReplExe forRepl verbosity numJobs pkgDescr lbi
   exe@Executable { exeName = exeName', modulePath = modPath } clbi = do
 
-  (etaProg, _)      <- requireProgram verbosity etaProgram (withPrograms lbi)
-  (coursierProg, _) <- requireProgram verbosity coursierProgram (withPrograms lbi)
+  (etaProg, _)  <- requireProgram verbosity etaProgram  (withPrograms lbi)
+  (javaProg, _) <- requireProgram verbosity javaProgram (withPrograms lbi)
+  coursierPath  <- fmap (\x -> x </> "coursier") $ getAppUserDataDirectory "epm"
   let runEtaProg = runGHC verbosity etaProg comp
       runCoursier options = getProgramInvocationOutput verbosity
-                              (programInvocation coursierProg options)
+                              (programInvocation javaProg $
+                               (["-jar", "-noverify", coursierPath] ++ options))
 
   createDirectoryIfMissingVerbose verbosity True exeDir
 

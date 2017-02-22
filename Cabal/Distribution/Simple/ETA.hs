@@ -453,6 +453,7 @@ buildOrReplExe forRepl verbosity numJobs pkgDescr lbi
 
   runEtaProg baseOpts
   -- Generate .sh file
+  -- TODO: change to add windows-support
   let generateExeScript = "#!/usr/bin/env bash\n"
                          ++ "DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"\n"
                          ++ "java -classpath \"$DIR/" ++ exeNameReal

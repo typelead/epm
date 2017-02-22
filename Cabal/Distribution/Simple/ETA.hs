@@ -460,7 +460,8 @@ buildOrReplExe forRepl verbosity numJobs pkgDescr lbi
                           classPaths
       generateExeScript =
         if (isWindows') then
-          "set " ++ dirEnvVar ++ "=%~dp0\r\n"
+          "@echo off\r\n"  
+          ++ "set " ++ dirEnvVar ++ "=%~dp0\r\n"
           ++ "java -classpath \"" ++ dirEnvVarRef ++ "/" ++ exeNameReal
           ++ classPaths''
           ++ "\" eta.main %*\r\n"

@@ -24,7 +24,7 @@ import Distribution.Simple.LocalBuildInfo    (ComponentName (..),
                                               depLibraryPaths)
 import Distribution.Simple.Utils             (die, notice, rawSystemExitWithEnv,
                                               addLibraryPath)
-import Distribution.System                   (Platform (..))
+import Distribution.System                   (Platform (..), OS(..))
 import Distribution.Verbosity                (Verbosity)
 
 import qualified Distribution.Simple.GHCJS as GHCJS
@@ -72,8 +72,10 @@ run verbosity lbi exe exeArgs = do
   (path, runArgs) <-
     case compilerFlavor (compiler lbi) of
       ETA -> do
+         let exeFileExt  = if isWindows lbi then ".cmd" else "" 
+             exeFileName = exeName exe ++ exeFileExt  
          p <- tryCanonicalizePath $
-            buildPref </> exeName exe </> exeName exe
+            buildPref </> exeName exe </> exeFileName
          return (p, [])
       GHCJS -> do
         let (script, cmd, cmdArgs) =
@@ -97,3 +99,7 @@ run verbosity lbi exe exeArgs = do
              else return env
   notice verbosity $ "Running " ++ exeName exe ++ "..."
   rawSystemExitWithEnv verbosity path (runArgs++exeArgs) env'
+
+isWindows :: LocalBuildInfo -> Bool
+isWindows lbi | Platform _ Windows <- hostPlatform lbi = True
+              | otherwise = False

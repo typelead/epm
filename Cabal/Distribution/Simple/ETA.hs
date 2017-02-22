@@ -434,8 +434,10 @@ buildOrReplExe forRepl verbosity numJobs pkgDescr lbi
                   else mavenPaths) ++ javaSrcs'
       fullClassPath = depJars ++ mavenPaths
       classPaths' = if isShared then fullClassPath else []
+      dirEnvVar = "DIR"
+      dirEnvVarRef = if isWindows' then "%" ++ dirEnvVar ++ "%" else "$" ++ dirEnvVar
       classPaths = (if isShared && not (null javaSrcs)
-                    then ["$DIR/" ++ exeName' ++ "-tmp/__extras.jar"]
+                    then [dirEnvVarRef ++ "/" ++ exeName' ++ "-tmp/__extras.jar"]
                     else [])
                     ++ classPaths'
       baseOpts = (componentGhcOptions verbosity lbi exeBi clbi exeDir)
@@ -452,17 +454,24 @@ buildOrReplExe forRepl verbosity numJobs pkgDescr lbi
                  }
 
   runEtaProg baseOpts
-  -- Generate .sh file
-  -- TODO: change to add windows-support
-  let generateExeScript = "#!/usr/bin/env bash\n"
-                         ++ "DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"\n"
-                         ++ "java -classpath \"$DIR/" ++ exeNameReal
-                         ++ (if null classPaths
-                             then ""
-                             else classPathSep : intercalate [classPathSep]
-                                                   classPaths)
-                         ++ "\" eta.main \"$@\"\n"
+  -- Generate command line executable file
+  let classPaths''= if null classPaths then ""
+                     else classPathSep : intercalate [classPathSep]
+                          classPaths
+      generateExeScript =
+        if (isWindows') then
+          "set " ++ dirEnvVar ++ "=%~dp0\r\n"
+          ++ "java -classpath \"" ++ dirEnvVarRef ++ "/" ++ exeNameReal
+          ++ classPaths''
+          ++ "\" eta.main %*\r\n"
+        else
+          "#!/usr/bin/env bash\n"
+          ++ dirEnvVar ++ "=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"\n"
+          ++ "java -classpath \"" ++ dirEnvVarRef ++ "/" ++ exeNameReal
+          ++ classPaths''
+          ++ "\" eta.main \"$@\"\n"
       scriptFile = targetDir </> exeName'
+                               ++ if isWindows' then ".cmd" else ""
   writeUTF8File scriptFile generateExeScript
   p <- getPermissions scriptFile
   setPermissions scriptFile (p {executable = True})
@@ -477,10 +486,12 @@ buildOrReplExe forRepl verbosity numJobs pkgDescr lbi
         targetDir = buildDir lbi </> exeName'
         exeDir    = targetDir </> (exeName' ++ "-tmp")
         exeJar    = targetDir </> exeNameReal
-        isWindows
-          | Platform _ Windows <- hostPlatform lbi = True
-          | otherwise = False
-        classPathSep = if isWindows then ';' else ':'
+        isWindows'= isWindows lbi
+        classPathSep = if isWindows' then ';' else ':'
+
+isWindows :: LocalBuildInfo -> Bool
+isWindows lbi | Platform _ Windows <- hostPlatform lbi = True
+              | otherwise = False
 
 -- |Install for ghc, .hi, .a and, if --with-ghci given, .o
 installLib    :: Verbosity
@@ -652,7 +663,8 @@ getDependencyClassPaths packageIndex pkgDescr lbi clbi = do
   where mavenDeps = concatMap InstalledPackageInfo.extraLibraries packageInfos
         packages' = map fst $ componentPackageDeps clbi
         (libs, packages'') = partition (isInfixOf "-inplace" . show) packages'
-        libPaths = if null libs then [] else ["$DIR/../"
+        dirEnvVarRef = if isWindows lbi then "%DIR%" else "$DIR"
+        libPaths = if null libs then [] else [dirEnvVarRef ++ "/../"
                                               ++ mkJarName (fromJust mbLibName)]
         libMavenDeps = if null libs
                        then []

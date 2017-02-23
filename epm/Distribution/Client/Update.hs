@@ -82,4 +82,6 @@ updatePatchRepo verbosity = do
   exists <- doesDirectoryExist patchesDir
   if exists
   then runGit ["-C", patchesDir, "pull"]
-  else runGit ["clone", "--depth=1", etaHackageUrl, patchesDir]
+  else 
+     runGit ["clone", "--depth=1", "--config", "core.autocrlf=false", etaHackageUrl, patchesDir]
+

@@ -22,7 +22,7 @@ import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo, packageKey )
 import Distribution.PackageDescription
          ( Benchmark(..), GenericPackageDescription(..), FlagAssignment
-         , TestSuite(..) )
+         , TestSuite(..), SourceRepo )
 import Distribution.PackageDescription.Configuration
          ( mapTreeData )
 import Distribution.Client.PackageIndex
@@ -207,9 +207,8 @@ data PackageLocation local =
     -- locally cached copy. ie a package available from hackage
   | RepoTarballPackage Repo PackageId local
 
---TODO:
---  * add support for darcs and other SCM style remote repos with a local cache
---  | ScmPackage
+    -- | A package available as a source control mangement (SCM) repository.
+  | ScmPackage SourceRepo local
   deriving (Show, Functor)
 
 data LocalRepo = LocalRepo

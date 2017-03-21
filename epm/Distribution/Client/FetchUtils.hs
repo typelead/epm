@@ -20,33 +20,42 @@ module Distribution.Client.FetchUtils (
 
     -- ** specifically for repo packages
     fetchRepoTarball,
+    fetchSourceRepo,
 
     -- * fetching other things
     downloadIndex,
   ) where
 
+import Distribution.Client.Brancher
 import Distribution.Client.Types
 import Distribution.Client.HttpUtils
          ( downloadURI, isOldHackageURI, DownloadResult(..) )
 
 import Distribution.Package
-         ( PackageId, packageName, packageVersion )
+         ( PackageId, PackageName, packageName, packageVersion )
 import Distribution.Simple.Utils
          ( notice, info, setupMessage )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity
          ( Verbosity )
+import Distribution.Version        ( Version(..), orLaterVersion )
+import Distribution.Simple.Program ( gitProgram, defaultProgramConfiguration
+                                   , runProgramInvocation, programInvocation
+                                   , getProgramInvocationOutput
+                                   , requireProgramVersion )
+import qualified Distribution.PackageDescription as PD
 
 import Data.Maybe
 import System.Directory
-         ( doesFileExist, createDirectoryIfMissing, getTemporaryDirectory )
+         ( doesFileExist, doesDirectoryExist, createDirectoryIfMissing,
+           getTemporaryDirectory )
 import System.IO
          ( openTempFile, hClose )
 import System.FilePath
          ( (</>), (<.>) )
 import qualified System.FilePath.Posix as FilePath.Posix
-         ( combine, joinPath )
+         ( combine, joinPath, splitDirectories )
 import Network.URI
          ( URI(uriPath) )
 
@@ -59,11 +68,12 @@ import Network.URI
 --
 isFetched :: PackageLocation (Maybe FilePath) -> IO Bool
 isFetched loc = case loc of
-    LocalUnpackedPackage _dir       -> return True
-    LocalTarballPackage  _file      -> return True
-    RemoteTarballPackage _uri local -> return (isJust local)
-    RepoTarballPackage repo pkgid _ -> doesFileExist (packageFile repo pkgid)
-
+    LocalUnpackedPackage _dir        -> return True
+    LocalTarballPackage  _file       -> return True
+    RemoteTarballPackage _uri local  -> return (isJust local)
+    RepoTarballPackage repo pkgid _  -> doesFileExist (packageFile repo pkgid)
+    ScmPackage (Just repo) _ pkgid _ ->
+      doesDirectoryExist (packageDir repo pkgid)
 
 checkFetched :: PackageLocation (Maybe FilePath)
              -> IO (Maybe (PackageLocation FilePath))
@@ -76,6 +86,8 @@ checkFetched loc = case loc of
       return (Just $ RemoteTarballPackage uri file)
     RepoTarballPackage repo pkgid (Just file) ->
       return (Just $ RepoTarballPackage repo pkgid file)
+    ScmPackage maybeRepo srcRepos pkgid (Just file) ->
+      return (Just $ ScmPackage maybeRepo srcRepos pkgid file)
 
     RemoteTarballPackage _uri Nothing -> return Nothing
     RepoTarballPackage repo pkgid Nothing -> do
@@ -84,7 +96,12 @@ checkFetched loc = case loc of
       if exists
         then return (Just $ RepoTarballPackage repo pkgid file)
         else return Nothing
-
+    ScmPackage (Just repo) srcRepos pkgid Nothing -> do
+      let dir = packageDir repo pkgid
+      exists <- doesDirectoryExist dir
+      if exists
+        then return (Just $ ScmPackage (Just repo) srcRepos pkgid dir)
+        else return Nothing
 
 -- | Fetch a package if we don't have it already.
 --
@@ -100,6 +117,8 @@ fetchPackage verbosity loc = case loc of
       return (RemoteTarballPackage uri file)
     RepoTarballPackage repo pkgid (Just file) ->
       return (RepoTarballPackage repo pkgid file)
+    ScmPackage maybeRepo sourceRepos pkgid (Just file) ->
+      return (ScmPackage maybeRepo sourceRepos pkgid file)
 
     RemoteTarballPackage uri Nothing -> do
       path <- downloadTarballPackage uri
@@ -107,6 +126,9 @@ fetchPackage verbosity loc = case loc of
     RepoTarballPackage repo pkgid Nothing -> do
       local <- fetchRepoTarball verbosity repo pkgid
       return (RepoTarballPackage repo pkgid local)
+    ScmPackage (Just repo) sourceRepos pkgid Nothing -> do
+      local <- fetchSourceRepo verbosity repo pkgid sourceRepos
+      return (ScmPackage (Just repo) sourceRepos pkgid local)
   where
     downloadTarballPackage uri = do
       notice verbosity ("Downloading " ++ show uri)
@@ -139,18 +161,49 @@ fetchRepoTarball verbosity repo pkgid = do
         _ <- downloadURI verbosity uri path
         return path
 
+-- | Fetch a source control management repo package if we don't have it already.
+--
+fetchSourceRepo :: Verbosity -> Repo -> PackageId
+                -> [PD.SourceRepo] -> IO FilePath
+fetchSourceRepo verbosity repo pkgid sourceRepos = do
+  fetched <- doesDirectoryExist repoDir
+  if fetched
+    then do info verbosity $ repoDir ++ " has already been downloaded."
+            return repoDir
+    else do notice verbosity $ "Downloading " ++ repoDir ++ "..."
+            downloadSourceRepo
+            return repoDir
+  where
+    repoDir = packageDir repo pkgid
+    downloadSourceRepo = do
+      branchers <- findUsableBranchers
+      forkPackage verbosity branchers repoDir Nothing pkgid sourceRepos
+
 -- | Downloads an index file to [config-dir/packages/serv-id].
 --
-downloadIndex :: Verbosity -> RemoteRepo -> FilePath -> IO DownloadResult
-downloadIndex verbosity repo cacheDir = do
-  let uri = (remoteRepoURI repo) {
-              uriPath = uriPath (remoteRepoURI repo)
-                          `FilePath.Posix.combine` "00-index.tar.gz"
-            }
-      path = cacheDir </> "00-index" <.> "tar.gz"
-  createDirectoryIfMissing True cacheDir
-  downloadURI verbosity uri path
+downloadIndex :: Verbosity -> IndexType -> RemoteRepo -> FilePath
+              -> IO DownloadResult
+downloadIndex verbosity indexType repo cacheDir
+  | indexType == GitIndex = do
+      exists <- doesDirectoryExist cacheDir
+      (gitProg, _, _) <- requireProgramVersion verbosity
+                           gitProgram
+                           (orLaterVersion (Version [1,8,5] []))
+                           defaultProgramConfiguration
+      let runGit = runProgramInvocation verbosity . programInvocation gitProg
+      if exists
+      then runGit ["-C", cacheDir, "pull"]
+      else runGit ["clone", "--depth=1", show (remoteRepoURI repo), cacheDir]
+      return FileAlreadyInCache
 
+  | otherwise = do
+      let uri = (remoteRepoURI repo) {
+              uriPath = uriPath (remoteRepoURI repo)
+                       `FilePath.Posix.combine` "00-index.tar.gz"
+            }
+          path = cacheDir </> "00-index" <.> "tar.gz"
+      createDirectoryIfMissing True cacheDir
+      downloadURI verbosity uri path
 
 -- ------------------------------------------------------------
 -- * Path utilities
@@ -190,3 +243,13 @@ packageURI repo pkgid =
       ,"package"
       ,display pkgid <.> "tar.gz"]
   }
+
+repoCacheDir :: PD.SourceRepo -> FilePath -> FilePath
+repoCacheDir sourceRepo cacheDir
+  | null parts = error "repoCacheDir: Invalid rep url."
+  | otherwise = FilePath.Posix.joinPath (cacheDir : repoType' : parts)
+  where repoType' = PD.repoTypeLowercase $ fromJust $ PD.repoType sourceRepo
+        parts     = drop 2
+                  . FilePath.Posix.splitDirectories
+                  . fromJust
+                  $ PD.repoLocation sourceRepo

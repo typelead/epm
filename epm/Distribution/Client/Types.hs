@@ -38,6 +38,8 @@ import Network.URI (URI)
 import Data.ByteString.Lazy (ByteString)
 import Control.Exception
          ( SomeException )
+import Data.List ( isSuffixOf )
+import System.FilePath ((</>))
 
 newtype Username = Username { unUsername :: String }
 newtype Password = Password { unPassword :: String }
@@ -208,7 +210,7 @@ data PackageLocation local =
   | RepoTarballPackage Repo PackageId local
 
     -- | A package available as a source control mangement (SCM) repository.
-  | ScmPackage SourceRepo local
+  | ScmPackage (Maybe Repo) [SourceRepo] PackageId local
   deriving (Show, Functor)
 
 data LocalRepo = LocalRepo
@@ -220,11 +222,39 @@ data RemoteRepo = RemoteRepo {
   }
   deriving (Show,Eq,Ord)
 
+data IndexType =
+    -- | This type of repo has an index that is .tar.gz
+    TarballIndex
+
+    -- | This type of repo has an index that is managed by
+    -- source control.
+  | GitIndex
+  deriving (Show,Eq)
+
 data Repo = Repo {
-    repoKind     :: Either RemoteRepo LocalRepo,
-    repoLocalDir :: FilePath
+    repoKind      :: Either RemoteRepo LocalRepo,
+    repoLocalDir  :: FilePath,
+    repoIndexType :: IndexType
   }
   deriving (Show,Eq)
+
+repoIndexFile :: Repo -> FilePath
+repoIndexFile repo
+  | isGitIndexedRepo repo = localDir </> ".epm-index"
+  | otherwise             = localDir </> "00-index.tar"
+  where localDir = repoLocalDir repo
+
+repoCacheFile :: Repo -> FilePath
+repoCacheFile repo
+  | isGitIndexedRepo repo = localDir </> ".epm-cache"
+  | otherwise             = localDir </> "00-index.cache"
+  where localDir = repoLocalDir repo
+
+isGitIndexedRepo :: Repo -> Bool
+isGitIndexedRepo repo = repoIndexType repo == GitIndex
+
+isGitIndexFile :: FilePath -> Bool
+isGitIndexFile f = ".epm-index" `isSuffixOf` f
 
 -- ------------------------------------------------------------
 -- * Build results

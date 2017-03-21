@@ -46,6 +46,7 @@ executable epm
     main-is:        Main.hs
     ghc-options:    -Wall -fwarn-tabs
     other-modules:
+        Distribution.Client.Brancher
         Distribution.Client.BuildReports.Anonymous
         Distribution.Client.BuildReports.Storage
         Distribution.Client.BuildReports.Types

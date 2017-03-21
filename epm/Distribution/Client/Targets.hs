@@ -45,10 +45,6 @@ module Distribution.Client.Targets (
 
   ) where
 
-import System.Directory
-         ( getAppUserDataDirectory)
-import System.FilePath
-         ( (</>))
 import Distribution.Package
          ( Package(..), PackageName(..)
          , PackageIdentifier(..), packageName, packageVersion
@@ -64,7 +60,7 @@ import qualified Distribution.Client.Tar as Tar
 import Distribution.Client.FetchUtils
 import Distribution.Client.Utils ( tryFindPackageDesc )
 import {-# SOURCE #-} Distribution.Client.Patch ( patchedTarPackageCabalFile )
-import {-# SOURCE #-} Distribution.Client.Config (defaultCabalDir, defaultPatchesDir)
+import {-# SOURCE #-} Distribution.Client.Config (defaultPatchesDir)
 
 import Distribution.PackageDescription
          ( GenericPackageDescription, FlagName(..), FlagAssignment )
@@ -500,6 +496,9 @@ readPackageTarget verbosity target = case target of
       RepoTarballPackage _repo _pkgid _ ->
         error "TODO: readPackageTarget RepoTarballPackage"
         -- For repo tarballs this info should be obtained from the index.
+
+      ScmPackage _ _ _ _ ->
+        error "TODO: readPackageTarget ScmPackage"
 
   where
     readTarballPackageTarget location tarballFile tarballOriginalLoc = do

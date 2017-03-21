@@ -59,7 +59,8 @@ updateRepo verbosity repo = case repoKind repo of
   Left remoteRepo -> do
     notice verbosity $ "Downloading the latest package list from "
                     ++ remoteRepoName remoteRepo
-    downloadResult <- downloadIndex verbosity remoteRepo (repoLocalDir repo)
+    downloadResult <- downloadIndex verbosity (repoIndexType repo)
+                                    remoteRepo (repoLocalDir repo)
     case downloadResult of
       FileAlreadyInCache -> return ()
       FileDownloaded indexPath -> do
@@ -82,6 +83,6 @@ updatePatchRepo verbosity = do
   exists <- doesDirectoryExist patchesDir
   if exists
   then runGit ["-C", patchesDir, "pull"]
-  else 
+  else
      runGit ["clone", "--depth=1", "--config", "core.autocrlf=false", etaHackageUrl, patchesDir]
 

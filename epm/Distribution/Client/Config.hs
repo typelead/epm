@@ -432,7 +432,7 @@ initialSavedConfig = do
   return mempty {
     savedGlobalFlags     = mempty {
       globalCacheDir     = toFlag cacheDir,
-      globalRemoteRepos  = toNubList [defaultRemoteRepo],
+      globalRemoteRepos  = toNubList defaultRemoteRepos,
       globalWorldFile    = toFlag worldFile
     },
     savedConfigureFlags  = mempty {
@@ -489,12 +489,16 @@ defaultUserInstall = True
 -- We do per-user installs by default on all platforms. We used to default to
 -- global installs on Windows but that no longer works on Windows Vista or 7.
 
-defaultRemoteRepo :: RemoteRepo
-defaultRemoteRepo = RemoteRepo name uri
+defaultRemoteRepos :: [RemoteRepo]
+defaultRemoteRepos = [RemoteRepo hackageName hackageUri
+                     ,RemoteRepo etlasName   etlasUri]
   where
-    name = "hackage.haskell.org"
-    uri  = URI "http:" (Just (URIAuth "" name "")) "/packages/archive" "" ""
-
+    hackageName = "hackage.haskell.org"
+    hackageUri  = URI "http:" (Just (URIAuth "" hackageName ""))
+                      "/packages/archive" "" ""
+    etlasName = "git.etlas.eta-lang.org"
+    etlasUri  = URI "http:" (Just (URIAuth "" "github.com" ""))
+                      "/typelead/etlas" "" ""
 --
 -- * Config file reading
 --

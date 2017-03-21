@@ -45,7 +45,8 @@ module Distribution.Client.Setup
     ) where
 
 import Distribution.Client.Types
-         ( Username(..), Password(..), Repo(..), RemoteRepo(..), LocalRepo(..) )
+         ( Username(..), Password(..), Repo(..), RemoteRepo(..), LocalRepo(..),
+           IndexType(..))
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Dependency.Types
@@ -84,7 +85,8 @@ import Distribution.Text
 import Distribution.ReadE
          ( ReadE(..), readP_to_E, succeedReadE )
 import qualified Distribution.Compat.ReadP as Parse
-         ( ReadP, readP_to_S, readS_to_P, char, munch1, pfail, sepBy1, (+++) )
+         ( ReadP, readP_to_S, readS_to_P, char, munch1, pfail, sepBy1, (+++),
+           skipSpaces )
 import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
@@ -93,7 +95,7 @@ import Distribution.Simple.Utils
 import Data.Char
          ( isSpace, isAlphaNum )
 import Data.List
-         ( intercalate, delete, deleteFirstsBy )
+         ( intercalate, delete, deleteFirstsBy, stripPrefix )
 import Data.Maybe
          ( listToMaybe, maybeToList, fromMaybe )
 #if !MIN_VERSION_base(4,8,0)
@@ -291,7 +293,8 @@ globalCommand commands = CommandUI {
       ,option [] ["remote-repo"]
          "The name and url for a remote repository"
          globalRemoteRepos (\v flags -> flags { globalRemoteRepos = v })
-         (reqArg' "NAME:URL" (toNubList . maybeToList . readRepo) (map showRepo . fromNubList))
+         (reqArg' "[git.]NAME:URL" (toNubList . fromMaybe [] . readRepos)
+                                   (map showRepo . fromNubList))
 
       ,option [] ["remote-repo-cache"]
          "The location where downloads from all remote repos are cached"
@@ -348,12 +351,18 @@ globalRepos :: GlobalFlags -> [Repo]
 globalRepos globalFlags = remoteRepos ++ localRepos
   where
     remoteRepos =
-      [ Repo (Left remote) cacheDir
+      [ Repo (Left remote) cacheDir indexType
       | remote <- fromNubList $ globalRemoteRepos globalFlags
+      , let (remote', indexType) =
+              case stripPrefix "git." (remoteRepoName remote) of
+                Just rest -> (remote { remoteRepoName = rest }, GitIndex)
+                Nothing -> (remote, TarballIndex)
+
       , let cacheDir = fromFlag (globalCacheDir globalFlags)
-                   </> remoteRepoName remote ]
+                   </> remoteRepoName remote' ]
     localRepos =
-      [ Repo (Right LocalRepo) local
+      [ Repo (Right LocalRepo) local TarballIndex
+        -- TODO: Support GitIndex for local repos
       | local <- fromNubList $ globalLocalRepos globalFlags ]
 
 -- ------------------------------------------------------------
@@ -2121,8 +2130,15 @@ showRepo :: RemoteRepo -> String
 showRepo repo = remoteRepoName repo ++ ":"
              ++ uriToString id (remoteRepoURI repo) []
 
-readRepo :: String -> Maybe RemoteRepo
-readRepo = readPToMaybe parseRepo
+readRepos :: String -> Maybe [RemoteRepo]
+readRepos = readPToMaybe parseRepos
+
+parseRepos :: Parse.ReadP r [RemoteRepo]
+parseRepos = Parse.sepBy1 (do Parse.skipSpaces
+                              repo <- parseRepo
+                              Parse.skipSpaces
+                              return repo)
+                          (Parse.char ',')
 
 parseRepo :: Parse.ReadP r RemoteRepo
 parseRepo = do

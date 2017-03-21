@@ -143,6 +143,7 @@ fromPlanPackage (Platform arch os) comp planPackage = case planPackage of
 
   where
     extractRepo (SourcePackage { packageSource = RepoTarballPackage repo _ _ }) = Just repo
+    extractRepo (SourcePackage { packageSource = ScmPackage repo _ _ _}) = repo
     extractRepo _ = Nothing
 
 fromPlanningFailure :: Platform -> CompilerId

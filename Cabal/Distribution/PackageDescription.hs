@@ -104,6 +104,7 @@ module Distribution.PackageDescription (
         RepoKind(..),
         RepoType(..),
         knownRepoTypes,
+        repoTypeLowercase,
   ) where
 
 import Distribution.Compat.Binary (Binary)
@@ -1033,6 +1034,10 @@ repoTypeAliases Bazaar    = ["bzr"]
 repoTypeAliases Mercurial = ["hg"]
 repoTypeAliases GnuArch   = ["arch"]
 repoTypeAliases _         = []
+
+repoTypeLowercase :: RepoType -> String
+repoTypeLowercase (OtherRepoType s) = lowercase s
+repoTypeLowercase s                 = lowercase (show s)
 
 instance Text RepoKind where
   disp RepoHead                = Disp.text "head"

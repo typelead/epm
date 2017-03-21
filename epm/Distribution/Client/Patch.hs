@@ -7,25 +7,23 @@ where
 
 import Distribution.Package        ( PackageIdentifier(..), PackageName(..))
 import Distribution.Simple.Program ( gitProgram, defaultProgramConfiguration
-                                   , runProgramInvocation, programInvocation
+                                   , programInvocation
                                    , getProgramInvocationOutput
                                    , requireProgramVersion )
-import Distribution.Simple.Utils   ( notice )
+import Distribution.Simple.Utils   ( notice, copyDirectoryRecursive )
 import Distribution.Version        ( Version(..), orLaterVersion )
 import Distribution.Verbosity      ( Verbosity )
 
 import Distribution.Client.Tar     ( extractTarGzFile )
-import Distribution.Client.Config  ( defaultPatchesDir )
 
-import Data.Version                ( Version(..) )
 import Data.List                   ( intercalate )
 import Control.Monad               ( when )
-import System.FilePath             ( FilePath, dropExtension, (</>), (<.>), takeFileName )
+import System.FilePath             ( dropExtension, (</>), (<.>), takeFileName )
 import System.Directory            ( doesFileExist )
 
 import qualified Data.ByteString.Lazy as BS
 
-patchedPackageCabalFile :: PackageIdentifier 
+patchedPackageCabalFile :: PackageIdentifier
                         -> IO FilePath
                         -> IO (Maybe BS.ByteString)
 patchedPackageCabalFile
@@ -37,15 +35,15 @@ patchedPackageCabalFile
                       ++ (intercalate "." $ map show versions)
                       <.> "cabal") patchesDir
 
-patchedTarPackageCabalFile :: FilePath 
+patchedTarPackageCabalFile :: FilePath
                            -> IO FilePath
                            -> IO (Maybe (FilePath, BS.ByteString))
-patchedTarPackageCabalFile tarFilePath patchesDir' = 
+patchedTarPackageCabalFile tarFilePath patchesDir' =
   fmap (fmap (\bs -> (cabalFile, bs))) $ findCabalFilePatch cabalFile patchesDir'
   where packageAndVersion = dropExtension . dropExtension $ tarFilePath
         cabalFile = packageAndVersion <.> "cabal"
 
-findCabalFilePatch :: FilePath 
+findCabalFilePatch :: FilePath
                    -> IO FilePath -- ^ Filepath of the patches directory
                    -> IO (Maybe BS.ByteString)
 findCabalFilePatch cabalFile patchesDir' = do
@@ -63,13 +61,16 @@ patchedExtractTarGzFile :: Verbosity
                         -> FilePath -- ^ Expected subdir (to check for tarbombs)
                         -> FilePath -- ^ Tarball
                         -> IO FilePath -- ^ Filepath of the patches directory
+                        -> Bool        -- ^ Is git repo
                         -> IO ()
-patchedExtractTarGzFile verbosity setupForPatch dir expected tar patchesDir' = do
+patchedExtractTarGzFile verbosity setupForPatch dir expected tar patchesDir' isGit = do
   patchesDir <- patchesDir'
   -- TODO: Speed this up with a cache?
   let patchFileLocation = patchesDir </> "patches" </> patchFile
   exists <- doesFileExist patchFileLocation
-  extractTarGzFile dir expected tar
+  if isGit
+  then copyDirectoryRecursive verbosity tar dir
+  else extractTarGzFile dir expected tar
   when exists $ do
     (gitProg, _, _) <- requireProgramVersion verbosity
                       gitProgram
@@ -82,14 +83,13 @@ patchedExtractTarGzFile verbosity setupForPatch dir expected tar patchesDir' = d
     _ <- runGit ["-C", gitDir, "init"]
     when setupForPatch $ do
       _ <- runGit ["-C", gitDir, "add", "."]
-      runGit ["-C", gitDir, "commit", "-m", "First"]
+      _ <- runGit ["-C", gitDir, "commit", "-m", "First"]
       return ()
     _ <- runGit ["-C", gitDir, "apply",
                  "--ignore-space-change", "--ignore-whitespace"
            , patchFileLocation]
     when setupForPatch $ do
-      runGit ["-C", gitDir, "add", "."]
+      _ <- runGit ["-C", gitDir, "add", "."]
       return ()
-    return ()
   where packageAndVersion = takeFileName expected
         patchFile = packageAndVersion <.> "patch"

@@ -1253,16 +1253,19 @@ installLocalPackage verbosity jobLimit pkgid location distPref patchDir installP
 
     LocalTarballPackage tarballPath ->
       installLocalTarballPackage verbosity jobLimit
-        pkgid tarballPath distPref installPkg patchDir
+        pkgid tarballPath distPref installPkg patchDir False
 
     RemoteTarballPackage _ tarballPath ->
       installLocalTarballPackage verbosity jobLimit
-        pkgid tarballPath distPref installPkg patchDir
+        pkgid tarballPath distPref installPkg patchDir False
 
     RepoTarballPackage _ _ tarballPath ->
       installLocalTarballPackage verbosity jobLimit
-        pkgid tarballPath distPref installPkg patchDir
+        pkgid tarballPath distPref installPkg patchDir False
 
+    ScmPackage _ _ _ localPkgPath ->
+      installLocalTarballPackage verbosity jobLimit
+        pkgid localPkgPath distPref installPkg patchDir True
 
 installLocalTarballPackage
   :: Verbosity
@@ -1270,20 +1273,21 @@ installLocalTarballPackage
   -> PackageIdentifier -> FilePath -> FilePath
   -> (Maybe FilePath -> IO BuildResult)
   -> IO FilePath
+  -> Bool -- ^ Is git repo
   -> IO BuildResult
 installLocalTarballPackage verbosity jobLimit pkgid
-                           tarballPath distPref installPkg patchDir = do
+                           tarballPath distPref installPkg patchDir isGit = do
   tmp <- getTemporaryDirectory
   withTempDirectory verbosity tmp "cabal-tmp" $ \tmpDirPath ->
     onFailure UnpackFailed $ do
-      let relUnpackedPath = display pkgid
+      let relUnpackedPath = if isGit then "" else display pkgid
           absUnpackedPath = tmpDirPath </> relUnpackedPath
           descFilePath = absUnpackedPath
                      </> display (packageName pkgid) <.> "cabal"
       withJobLimit jobLimit $ do
-        info verbosity $ "Extracting " ++ tarballPath
-                      ++ " to " ++ tmpDirPath ++ "..."
-        patchedExtractTarGzFile verbosity False tmpDirPath relUnpackedPath tarballPath patchDir
+        info verbosity $ (if isGit then "Copying " else "Extracting ")
+                      ++ tarballPath ++ " to " ++ tmpDirPath ++ "..."
+        patchedExtractTarGzFile verbosity False tmpDirPath relUnpackedPath tarballPath patchDir isGit
         exists <- doesFileExist descFilePath
         when (not exists) $
           die $ "Package .cabal file not found: " ++ show descFilePath

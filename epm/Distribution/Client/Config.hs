@@ -498,7 +498,7 @@ defaultRemoteRepos = [RemoteRepo hackageName hackageUri
                       "/packages/archive" "" ""
     etlasName = "git.etlas.eta-lang.org"
     etlasUri  = URI "http:" (Just (URIAuth "" "github.com" ""))
-                      "/typelead/etlas" "" ""
+                      "/typelead/etlas-index" "" ""
 --
 -- * Config file reading
 --
